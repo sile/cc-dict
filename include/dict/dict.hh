@@ -42,10 +42,13 @@ namespace dict {
     {
       bucket_size = 1 << bitlen;
       buckets = new BucketNode*[bucket_size];
-      std::fill(buckets, buckets+bucket_size, tail());
+      std::fill(buckets, buckets+bucket_size, &TAIL);
 
       bitmask = (1 << bitlen)-1;
       recalc_rehash_border();
+
+      TAIL.next = &TAIL;
+      TAIL.hashcode = -1;
     }
 
     ~dict() {
@@ -53,44 +56,63 @@ namespace dict {
     }
 
     bool contains(const Key& key) const {
-      return true;
+      Place p;
+      return find_node(key, p);
     }
 
   private:
     typedef Node<Key,Value> BucketNode;
 
     struct Candidate {
-      unsigned index;
-      unsigned pred;
-      unsigned node;
+      unsigned index;   // XXX: 不要？
+      BucketNode* pred;
+      BucketNode* node;
     };
 
-    // XXX: => sentinel
-    BucketNode* tail() const {
-      return reinterpret_cast<BucketNode*>(NULL);
-    }
+    struct Place {
+      BucketNode** place;
+      BucketNode* pred;
+      BucketNode* node;
+    };
 
   private:
     void recalc_rehash_border() {
       rehash_border = bucket_size * rehash_threshold;
     }
 
-    void find_node(const Key& key) const {
-      const unsigned hashcode = hash(key);
+    bool find_node(const Key& key, Place& p) const {
+      const unsigned hashcode = hash(key) & 0x7FFFFFFF; // XXX: sizeof(unsigned)==32 以外の環境に対応
 
       Candidate ca;
       find_candidate(hashcode, ca);
+
+      for(;;) {
+        if(hashcode != ca.node->hashcode) {
+          p.node = ca.node;
+          p.pred = ca.pred;
+          p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
+            
+          return false;
+        } 
+        if(key == ca.node->key) {
+          p.node = ca.node;
+          p.pred = ca.pred;
+          p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
+          
+          return true;
+        }
+        ca.pred = ca.node;
+        ca.node = ca.node->next;
+      }
     }
 
     void find_candidate(const unsigned hashcode, Candidate& ca) const {
       const unsigned index = hashcode & bitmask;
       
-      //unsigned pred = TAIL;
-      //unsigned node = buckets[index];
-      BucketNode* pred = tail();
+      BucketNode* pred = const_cast<BucketNode*>(&TAIL);
       BucketNode* node = buckets[index];
       for(; node->hashcode < hashcode; pred=node, node=node->next)
-        if(hashcode <= node->hash)
+        if(hashcode <= node->hashcode)
           break;
 
       ca.index = index;
@@ -107,6 +129,8 @@ namespace dict {
     
     unsigned rehash_border;
     float rehash_threshold;
+    
+    BucketNode TAIL;
   };
 }
 
