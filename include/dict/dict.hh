@@ -38,6 +38,7 @@ namespace dict {
     dict() :
       buckets(NULL),
       bitlen(3),
+      count(0),
       rehash_threshold(1.0)
     {
       bucket_size = 1 << bitlen;
@@ -60,6 +61,8 @@ namespace dict {
       return find_node(key, p);
     }
 
+    unsigned size() const { return count; }
+    
     bool put(const Key& key, const Value& value) {
       Place p;
       bool exists = find_node(key, p);
@@ -72,6 +75,10 @@ namespace dict {
         new_node->hashcode = p.hashcode;
         new_node->next = p.node;
         *p.place = new_node;
+
+        count++;
+        if(count >= rehash_border)
+          enlarge();
       }
 
       return exists;
@@ -81,7 +88,7 @@ namespace dict {
     typedef Node<Key,Value> BucketNode;
 
     struct Candidate {
-      unsigned index;   // XXX: 不要？
+      BucketNode** place;
       BucketNode* pred;
       BucketNode* node;
     };
@@ -94,6 +101,30 @@ namespace dict {
     };
 
   private:
+    void enlarge() {
+      BucketNode** old_buckets = buckets;
+      unsigned old_bucket_size = bucket_size;
+
+      bitlen <<= 1;
+      bucket_size = 1 << bitlen;
+      
+      buckets = new BucketNode*[bucket_size];
+      std::fill(buckets, buckets+bucket_size, &TAIL);
+      recalc_rehash_border();
+
+      for(unsigned i=0; i < old_bucket_size; i++)
+        for(BucketNode* node=old_buckets[i]; node != &TAIL; node = node->next)
+          rehash_node(node);
+      delete [] old_buckets;
+    }
+    
+    void rehash_node(BucketNode* node) {
+      Candidate ca;
+      find_candidate(node->hashcode, ca);
+      node->next = ca.node;
+      *ca.place = node;
+    }
+
     void recalc_rehash_border() {
       rehash_border = bucket_size * rehash_threshold;
     }
@@ -108,14 +139,14 @@ namespace dict {
         if(hashcode != ca.node->hashcode) {
           p.node = ca.node;
           p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
+          p.place = ca.pred==&TAIL ? ca.place : &ca.pred;
           p.hashcode = hashcode;            
           return false;
         } 
         if(key == ca.node->key) {
           p.node = ca.node;
           p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
+          p.place = ca.pred==&TAIL ? ca.place : &ca.pred;
           p.hashcode = hashcode;
           return true;
         }
@@ -129,18 +160,20 @@ namespace dict {
       
       BucketNode* pred = const_cast<BucketNode*>(&TAIL);
       BucketNode* node = buckets[index];
-      for(; node->hashcode < hashcode; pred=node, node=node->next)
+      for(; node->hashcode < hashcode; pred=node, node=node->next) {
         if(hashcode <= node->hashcode)
           break;
+        
+      }
 
-      ca.index = index;
+      ca.place = pred==&TAIL ? &buckets[index] : &pred;
       ca.pred = pred;
       ca.node = node;
     }
 
   private:
     BucketNode** buckets;
-    unsigned bucket_size;
+    unsigned bucket_size; // => buckets_size
     unsigned bitlen;
     unsigned bitmask;
     unsigned count;
