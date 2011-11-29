@@ -4,6 +4,14 @@
 #include <cstddef>
 #include <algorithm>
 
+/*
+ * TODO: 
+ * - アロケータ自作
+ * - operator[]
+ * - remove
+ * - each
+ * - Node::TAIL
+ */
 namespace dict {
   // TODO: 別ファイルに分ける
   // TODO: lisp/dictのcommit and push (inline展開指定ミス)
