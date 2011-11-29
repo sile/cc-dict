@@ -6,7 +6,7 @@
 
 /*
  * TODO: 
- * - アロケータ自作
+ * - アロケータ自作 (ハッシュテーブル単位でも。template引数でmalloc版と独自版を選べるようにする)
  * - operator[]
  * - remove
  * - each
@@ -46,30 +46,35 @@ namespace dict {
     struct Chunk {
       T* buf;
       unsigned size;
+      Chunk* prev;
+
+      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL) {
+        buf = new T[size];
+      }
+
+      ~Chunk() {
+        delete [] buf;
+        delete prev;
+      }
     };
 
   public:
     Allocator(unsigned initial_size) :
-      chunks(NULL),
-      chunk_size(1),
+      chunk(NULL),
       position(0)
     {
-      chunks = new Chunk[1];
-      chunks[0].size = initial_size;
-      chunks[0].buf = new T[initial_size];
+      chunk = new Chunk(initial_size);
     }
 
     ~Allocator() {
-      for(unsigned i=0; i < chunk_size; i++)
-        delete [] chunks[i].buf;
-      delete [] chunks;
+      delete chunk;
     }
     
     T* allocate() {
-      T* x = chunks[chunk_size-1].buf + position;
+      T* x = chunk->buf + position;
       position++;
       
-      if(position == chunks[chunk_size-1].size)
+      if(position == chunk->size)
         enlarge();
 
       return x;
@@ -77,27 +82,14 @@ namespace dict {
     
   private:
     void enlarge () {
-      Chunk* old = chunks;
-      unsigned old_size = chunk_size;
-      
-      chunk_size++;
-      chunks = new Chunk[chunk_size];
-      chunks[chunk_size-1].buf = new T[position*2];
-      chunks[chunk_size-1].size = position*2;
-
-      for(unsigned i=0; i < old_size; i++) {
-        chunks[i].buf = old[i].buf;
-        chunks[i].size = old[i].size;
-      }
-
-      delete [] old;
-
       position = 0;
+      Chunk* new_chunk = new Chunk(chunk->size*2);
+      new_chunk->prev = chunk;
+      chunk = new_chunk;
     }
 
   private:
-    Chunk* chunks;
-    unsigned chunk_size;
+    Chunk* chunk;
     unsigned position;
   };
 
