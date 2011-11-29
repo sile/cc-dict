@@ -83,7 +83,14 @@ namespace dict {
 
       return exists;
     }
-
+    
+    Value& get(const Key& key) const {
+      Place p;
+      if(find_node(key, p)) 
+        return p.node->value;
+      throw "TODO: error";
+    }
+    
   private:
     typedef Node<Key,Value> BucketNode;
 
@@ -107,7 +114,8 @@ namespace dict {
 
       bitlen <<= 1;
       bucket_size = 1 << bitlen;
-      
+      bitmask = (1 << bitlen)-1;
+
       buckets = new BucketNode*[bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
       recalc_rehash_border();

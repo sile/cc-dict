@@ -7,9 +7,9 @@ int main(int argc, char** argv) {
   dict::dict<int, int> d;
   int key = atoi(argv[1]);
 
-  for(int i=0; i < 10; i++)
+  for(int i=0; i < 100; i++)
     d.put(i, i*10);
 
-  std::cout << key << ": " << d.contains(key) << std::endl;
+  std::cout << key << ": " << (d.contains(key) ? d.get(key) : -1) << std::endl;
   return 0;
 }
