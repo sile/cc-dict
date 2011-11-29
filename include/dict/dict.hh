@@ -10,6 +10,7 @@
  * - operator[]
  * - remove
  * - each
+ * - clear
  * - Node::TAIL
  */
 namespace dict {
@@ -39,7 +40,67 @@ namespace dict {
     Node* next;
   };
 
-  
+  template<typename T>
+  class Allocator {
+  private:
+    struct Chunk {
+      T* buf;
+      unsigned size;
+    };
+
+  public:
+    Allocator(unsigned initial_size) :
+      chunks(NULL),
+      chunk_size(1),
+      position(0)
+    {
+      chunks = new Chunk[1];
+      chunks[0].size = initial_size;
+      chunks[0].buf = new T[initial_size];
+    }
+
+    ~Allocator() {
+      for(unsigned i=0; i < chunk_size; i++)
+        delete [] chunks[i].buf;
+      delete [] chunks;
+    }
+    
+    T* allocate() {
+      T* x = chunks[chunk_size-1].buf + position;
+      position++;
+      
+      if(position == chunks[chunk_size-1].size)
+        enlarge();
+
+      return x;
+    }
+    
+  private:
+    void enlarge () {
+      Chunk* old = chunks;
+      unsigned old_size = chunk_size;
+      
+      chunk_size++;
+      chunks = new Chunk[chunk_size];
+      chunks[chunk_size-1].buf = new T[position*2];
+      chunks[chunk_size-1].size = position*2;
+
+      for(unsigned i=0; i < old_size; i++) {
+        chunks[i].buf = old[i].buf;
+        chunks[i].size = old[i].size;
+      }
+
+      delete [] old;
+
+      position = 0;
+    }
+
+  private:
+    Chunk* chunks;
+    unsigned chunk_size;
+    unsigned position;
+  };
+
   template<typename Key, typename Value>
   class dict {
   public:
@@ -47,7 +108,8 @@ namespace dict {
       buckets(NULL),
       bitlen(3),
       count(0),
-      rehash_threshold(1.0)
+      rehash_threshold(1.0),
+      alc(8) // XXX:
     {
       bucket_size = 1 << bitlen;
       buckets = new BucketNode*[bucket_size];
@@ -77,7 +139,7 @@ namespace dict {
       if(exists) {
         p.node->value = value;
       } else {
-        BucketNode* new_node = new BucketNode;
+        BucketNode* new_node = new (alc.allocate()) BucketNode;
         new_node->key = key;
         new_node->value = value;
         new_node->hashcode = p.hashcode;
@@ -198,6 +260,8 @@ namespace dict {
     float rehash_threshold;
     
     BucketNode TAIL;
+
+    Allocator<BucketNode> alc;
   };
 }
 
