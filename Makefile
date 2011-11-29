@@ -11,4 +11,4 @@ bin/dict: src/bin/dict.cc include/dict/dict.hh
 	${CXX} ${CXX_FLAGS} -o ${@} ${<} ${CXX_OPTS}
 
 clean:
-	rm -f ${COMMANDS}
+	rm -f bin/dict
