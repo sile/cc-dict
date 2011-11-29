@@ -149,5 +149,10 @@ int main(int argc, char** argv) {
   unorderedmap_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
   
+  dict::Cache<int> c;
+  c.get();
+  
+  dict::BucketsCache bc;
+  bc.allocate(10);
   return 0;
 }

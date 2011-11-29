@@ -40,8 +40,95 @@ namespace dict {
     Node* next;
   };
 
+  template <typename T>
+  class Cache {
+  public:
+    Cache() : 
+      used(NULL),
+      free(NULL),
+      used_size(0),
+      free_size(0)
+    {
+      used = new Node;
+      free = new Node;
+    }
+
+    ~Cache() {
+      while(!used->empty()) used->delete_next();
+      while(!free->empty()) free->delete_next();
+        
+      delete used;
+      delete free;
+    }
+
+    T* get() {
+      Node* x;
+      if(free->empty()) {
+        x = new Node;
+      } else {
+        x = free->next;
+        x->unlink();
+        free_size--;
+      }
+      used->append(x);
+      used_size++;
+      //std::cerr << "- " << (long)&x->buf << std::endl;
+      return &x->buf;
+    }
+
+    void release(T* addr) { 
+      Node* x = reinterpret_cast<Node*>(reinterpret_cast<char *>(addr)-(sizeof(Node*)*2));
+      //std::cerr << "# " << (long)addr << std::endl;
+      //std::cerr << "@ " << (long)&x->buf << std::endl;
+      x->unlink();
+      used_size--;
+
+      // XXX: 8
+      if(used_size+8 < free_size) {
+        delete x;
+      } else {
+        free->append(x);
+        free_size++;
+      }
+    }
+
+  private:
+    struct Node {
+      Node* pred; // TODO: ちゃんとメンテする
+      Node* next;
+      T buf;
+      
+      Node() : pred(this), next(this) {}
+
+      bool empty() const { return this == next; }
+      
+      void append(Node* node) {
+        node->next = next;
+        node->pred = this;
+        next = node;
+      }
+      
+      void unlink() {
+        pred->next = next;
+        next->pred = pred;
+      }
+
+      void delete_next() {
+        Node* tmp = next;
+        tmp->unlink();
+        delete tmp;
+      }
+    };
+    
+  private:
+    Node* used;
+    Node* free;
+    unsigned used_size;
+    unsigned free_size;
+  };
+
   template<typename T>
-  class Allocator {
+  class Allocator { // NodeAllocator
   private:
     struct Chunk {
       T* buf;
@@ -90,6 +177,40 @@ namespace dict {
     unsigned position;
   };
 
+  class BucketsCache {
+  public:
+    void* allocate(unsigned size) {
+      switch(size) {
+      case sizeof(void*[8]):
+        return c8.get();
+      case sizeof(void*[16]):
+        return c16.get();
+      default:
+        return new char[size];
+      }
+    }
+
+    void release(void* addr, unsigned size) {
+      switch(size) {
+      case sizeof(void*[8]):
+        c8.release(static_cast<void* (*)[8]>(addr));
+        break;
+      case sizeof(void*[16]):
+        c16.release(static_cast<void* (*)[16]>(addr));
+        break;
+      default:
+        delete [] static_cast<char*>(addr);
+      }
+    }
+    
+  private:
+    Cache<void*[8]> c8;
+    Cache<void*[16]> c16;    
+  };
+  
+  // XXX:
+  BucketsCache g_bc;
+
   template<typename Key, typename Value>
   class dict {
   public:
@@ -101,7 +222,8 @@ namespace dict {
       alc(8) // XXX:
     {
       bucket_size = 1 << bitlen;
-      buckets = new BucketNode*[bucket_size];
+      //buckets = new BucketNode* [bucket_size];
+      buckets = new (g_bc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
 
       bitmask = (1 << bitlen)-1;
@@ -112,7 +234,8 @@ namespace dict {
     }
 
     ~dict() {
-      delete [] buckets;
+      //delete [] buckets;
+      g_bc.release(buckets, sizeof(BucketNode*)*bucket_size);
     }
 
     bool contains(const Key& key) const {
@@ -175,14 +298,17 @@ namespace dict {
       bucket_size = 1 << bitlen;
       bitmask = (1 << bitlen)-1;
 
-      buckets = new BucketNode*[bucket_size];
+      // buckets = new BucketNode*[bucket_size];
+      buckets = new (g_bc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
       recalc_rehash_border();
 
       for(unsigned i=0; i < old_bucket_size; i++)
         for(BucketNode* node=old_buckets[i]; node != &TAIL;)
           node = rehash_node(node);
-      delete [] old_buckets;
+      //delete [] old_buckets;
+      //std::cerr << "+" << (long)old_buckets << std::endl;
+      g_bc.release(old_buckets, sizeof(BucketNode*)*old_bucket_size);
     }
     
     BucketNode* rehash_node(BucketNode* node) {
