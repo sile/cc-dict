@@ -60,6 +60,12 @@ namespace dict {
       return find_node(key, p);
     }
 
+    bool put(const Key& key, const Value& value) {
+      Place p;
+      bool exists = find_node(key, p);
+      return exists;
+    }
+
   private:
     typedef Node<Key,Value> BucketNode;
 
