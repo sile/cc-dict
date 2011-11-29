@@ -110,7 +110,7 @@ namespace dict {
 
     struct Place {
       BucketNode** place;
-      BucketNode* pred;
+      BucketNode* pred;  // XXX: 不要？
       BucketNode* node;
       unsigned hashcode;
     };
@@ -129,16 +129,20 @@ namespace dict {
       recalc_rehash_border();
 
       for(unsigned i=0; i < old_bucket_size; i++)
-        for(BucketNode* node=old_buckets[i]; node != &TAIL; node = node->next)
-          rehash_node(node);
+        for(BucketNode* node=old_buckets[i]; node != &TAIL;)
+          node = rehash_node(node);
       delete [] old_buckets;
     }
     
-    void rehash_node(BucketNode* node) {
+    BucketNode* rehash_node(BucketNode* node) {
+      BucketNode* next = node->next;
+
       Candidate ca;
       find_candidate(node->hashcode, ca);
       node->next = ca.node;
       *ca.place = node;
+
+      return next;
     }
 
     void recalc_rehash_border() {
@@ -155,14 +159,14 @@ namespace dict {
         if(hashcode != ca.node->hashcode) {
           p.node = ca.node;
           p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? ca.place : &ca.pred;
+          p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;            
           return false;
         } 
         if(key == ca.node->key) {
           p.node = ca.node;
           p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? ca.place : &ca.pred;
+          p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;
           return true;
         }
@@ -176,13 +180,9 @@ namespace dict {
       
       BucketNode* pred = const_cast<BucketNode*>(&TAIL);
       BucketNode* node = buckets[index];
-      for(; node->hashcode < hashcode; pred=node, node=node->next) {
-        if(hashcode <= node->hashcode)
-          break;
-        
-      }
+      for(; node->hashcode < hashcode; pred=node, node=node->next);
 
-      ca.place = pred==&TAIL ? &buckets[index] : &pred;
+      ca.place = pred==&TAIL ? &buckets[index] : &pred->next;
       ca.pred = pred;
       ca.node = node;
     }

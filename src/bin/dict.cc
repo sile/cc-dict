@@ -7,7 +7,8 @@
 using namespace std;
 using namespace tr1;
 
-#define DSIZE 1000000
+#define DSIZE 1000
+//000
 
 /**
  * clock function
