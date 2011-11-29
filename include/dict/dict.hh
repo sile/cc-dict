@@ -63,6 +63,17 @@ namespace dict {
     bool put(const Key& key, const Value& value) {
       Place p;
       bool exists = find_node(key, p);
+      if(exists) {
+        p.node->value = value;
+      } else {
+        BucketNode* new_node = new BucketNode;
+        new_node->key = key;
+        new_node->value = value;
+        new_node->hashcode = p.hashcode;
+        new_node->next = p.node;
+        *p.place = new_node;
+      }
+
       return exists;
     }
 
@@ -79,6 +90,7 @@ namespace dict {
       BucketNode** place;
       BucketNode* pred;
       BucketNode* node;
+      unsigned hashcode;
     };
 
   private:
@@ -97,14 +109,14 @@ namespace dict {
           p.node = ca.node;
           p.pred = ca.pred;
           p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
-            
+          p.hashcode = hashcode;            
           return false;
         } 
         if(key == ca.node->key) {
           p.node = ca.node;
           p.pred = ca.pred;
           p.place = ca.pred==&TAIL ? &buckets[ca.index] : &ca.pred;
-          
+          p.hashcode = hashcode;
           return true;
         }
         ca.pred = ca.node;
