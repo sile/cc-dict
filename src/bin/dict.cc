@@ -8,6 +8,7 @@ using namespace std;
 using namespace tr1;
 
 #define DSIZE 1000000
+#define N 10
 
 /**
  * clock function
@@ -56,6 +57,43 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;
 }
 
+void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
+  double beg_t = gettime();
+  unsigned count = 0;
+
+  for(int i=0; i < DSIZE; i += N) {
+    dict::dict<int,int> dic;    
+    for(int j=0; j < N; j++)
+      dic.put(data1[i+j], data1[i+j]);
+    for(int j=0; j < N; j++)
+      if(dic.contains(data1[i+j]))
+        count++;
+    for(int j=0; j < N; j++)
+      if(dic.contains(data2[i+j]))
+        count++;
+  }
+  std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
+}
+
+void unorderedmap_bench_small(int data1[DSIZE], int data2[DSIZE]) {
+  double beg_t = gettime();
+  unsigned count = 0;
+
+  for(int i=0; i < DSIZE; i += N) {
+    unordered_map<int,int> dic;
+
+    for(int j=0; j < N; j++)
+      dic[data1[i+j]] = data1[i+j];
+    for(int j=0; j < N; j++)
+      if(dic.find(data1[i+j]) != dic.end())
+        count++;
+    for(int j=0; j < N; j++)
+      if(dic.find(data2[i+j]) != dic.end())
+        count++;
+  }
+  std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
+}
+
 void unorderedmap_bench(int data1[DSIZE], int data2[DSIZE]) {
   unordered_map<int,int> dic;
   double beg_t = gettime();
@@ -92,22 +130,24 @@ int main(int argc, char** argv) {
   }
   
   double beg_t = gettime();
-  std::cout << "dict: " << std::endl;
+  std::cout << "dict: large" << std::endl;
   dict_bench(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
   
   beg_t = gettime();
-  std::cout << "unorderedmap: " << std::endl;
+  std::cout << "unorderedmap: large" << std::endl;
   unorderedmap_bench(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;  
-  /*
-  dict::dict<int, int> d;
-  int key = atoi(argv[1]);
+  
+  beg_t = gettime();
+  std::cout << "dict: small" << std::endl;
+  dict_bench_small(data1, data2);
+  std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
-  for(int i=0; i < 100; i++)
-    d.put(i, i*10);
-
-  std::cout << key << ": " << (d.contains(key) ? d.get(key) : -1) << std::endl;
-  */
+  beg_t = gettime();
+  std::cout << "unorderedmap: small" << std::endl;
+  unorderedmap_bench_small(data1, data2);
+  std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
+  
   return 0;
 }

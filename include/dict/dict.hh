@@ -71,13 +71,10 @@ namespace dict {
     }
     
     T* allocate() {
-      T* x = chunk->buf + position;
-      position++;
-      
       if(position == chunk->size)
         enlarge();
-
-      return x;
+      
+      return chunk->buf + (position++);
     }
     
   private:
