@@ -6,12 +6,6 @@
 #include <cstddef>
 #include <algorithm>
 
-#define field_offset(type, field) \
-  ((char*)&(((type*)NULL)->field) - (char*)NULL)
-
-#define obj_ptr(type, field, field_ptr) \
-  ((type*)((char*)field_ptr - field_offset(type, field)))
-
 /*
  * TODO: 
  * - アロケータ自作 (ハッシュテーブル単位でも。template引数でmalloc版と独自版を選べるようにする)
@@ -238,7 +232,7 @@ namespace dict {
     unsigned position;
   };
 
-  template<typename Key, typename Value, class Alloca = GeneralAllocator<Node<Key,Value>* > >
+  template<typename Key, typename Value, class Alloca = CachedAllocator<Node<Key,Value>* > >
   class dict {
   public:
     dict() :
@@ -247,7 +241,7 @@ namespace dict {
       count(0),
       rehash_threshold(0.75),
       alc(8), // XXX:
-      acc(Alloca::instance())
+      acc(Alloca::instance()) // TODO: 引数でも指定可能に
     {
       bucket_size = 1 << bitlen;
       //buckets = new BucketNode* [bucket_size];
@@ -321,7 +315,7 @@ namespace dict {
       BucketNode** old_buckets = buckets;
       unsigned old_bucket_size = bucket_size;
 
-      bitlen <<= 1;
+      bitlen++;
       bucket_size = 1 << bitlen;
       bitmask = (1 << bitlen)-1;
 
