@@ -1,5 +1,5 @@
 CXX=g++
-CXX_FLAGS=-O2 -Wall -ansi -pedantic-errors
+CXX_FLAGS=-O2 -Wall -ansi -pedantic-errors -Wno-invalid-offsetof
 CXX_OPTS=-I include
 
 all: bin bin/dict

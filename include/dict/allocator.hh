@@ -3,11 +3,8 @@
 
 #include <cstdlib>
 
-#define field_offset(type, field) \
-  ((char*)&(((type*)NULL)->field) - (char*)NULL)
-
-#define obj_ptr(type, field, field_ptr) \
-  ((type*)((char*)field_ptr - field_offset(type, field)))
+#define offsetof(TYPE, FIELD) ((std::size_t) &((TYPE *) 0)->FIELD)
+#define obj_ptr(TYPE, FIELD, FIELD_PTR) ((TYPE*)((char*)FIELD_PTR - offsetof(TYPE, FIELD)))
 
 namespace dict {
   /**
@@ -36,9 +33,9 @@ namespace dict {
   };
 
   template <typename T>
-  class Cache2 {
+  class Cache {
   public:
-    ~Cache2() {
+    ~Cache() {
       while(! used.empty()) delete used.pop();
       while(! free.empty()) delete free.pop();
     }
@@ -168,10 +165,10 @@ namespace dict {
     };
 
   private:
-    Cache2<Chunk<T[4]> > x4;
-    Cache2<Chunk<T[8]> > x8;
-    Cache2<Chunk<T[16]> > x16;
-    Cache2<Chunk<T[32]> > x32;
+    Cache<Chunk<T[4]> > x4;
+    Cache<Chunk<T[8]> > x8;
+    Cache<Chunk<T[16]> > x16;
+    Cache<Chunk<T[32]> > x32;
   };
 
   // TODO: rename
