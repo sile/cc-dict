@@ -1,19 +1,16 @@
 #ifndef DICT_DICT_HH
 #define DICT_DICT_HH
 
+#include "allocator.hh"
+
 #include <cstddef>
 #include <algorithm>
 
-// XXX:
-#define ptr_cast(type, addr) \
-          reinterpret_cast<type*>(addr)
-#define ptr_dec(type, addr, nbytes) \
-          ptr_cast(type, ptr_cast(char, addr) - nbytes)
-#define base(type) ptr_cast(type, NULL)
-#define field_offset(type, field, addr) \
-          (ptr_cast(char, base(type)->field) - base(char))
-#define get_object_head(type, field, addr) \
-          ptr_dec(type, addr, field_offset(type, field, addr))
+#define field_offset(type, field) \
+  ((char*)&(((type*)NULL)->field) - (char*)NULL)
+
+#define obj_ptr(type, field, field_ptr) \
+  ((type*)((char*)field_ptr - field_offset(type, field)))
 
 /*
  * TODO: 
@@ -99,7 +96,7 @@ namespace dict {
     }
 
     void release(void* addr) { 
-      Node* x = get_object_head(Node, buf, addr);
+      Node* x = obj_ptr(Node, buf, addr);
       x->unlink();
       used_size--;
 

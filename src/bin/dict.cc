@@ -31,7 +31,48 @@ inline double gettime() {
 
 #endif
 
+struct chunk {
+  struct {
+    const char* type;
+    int size;
+  } tag;
+  void* buf;
+};
+
+inline void* mem_allocate(const char* type, int size) {
+  chunk* c = (chunk*)new char[sizeof(chunk)-sizeof(chunk::buf)+size];
+  c->tag.type = type;
+  c->tag.size = size;
+
+  std::cout << "[" << c->tag.type << "] allocate: " << c->tag.size << " bytes" << std::endl;
+  return &c->buf;
+}
+
+void mem_free(void* p) {
+  chunk* c = obj_ptr(chunk, buf, p);
+  std::cout << "[" << c->tag.type << "] free: " << c->tag.size << " bytes" << std::endl;
+  delete c;
+}
+
+struct abc {
+  int a;
+  char b;
+  long c;
+};
+
 void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
+  void* ptrs[3];
+
+  std::cout << "# allocate:" << std::endl;
+  ptrs[0] = new (mem_allocate("int", sizeof(int))) int;
+  ptrs[1] = new (mem_allocate("pointer", sizeof(void*))) void*;
+  ptrs[2] = new (mem_allocate("struct", sizeof(abc))) abc;
+  
+  std::cout << std::endl;
+  std::cout << "# free:" << std::endl;
+  for(int i=2; i >=0; i--)
+    mem_free(ptrs[i]);
+
   dict::dict<int,int> dic;
   double beg_t = gettime();
   int count = 0;
