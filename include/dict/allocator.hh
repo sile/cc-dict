@@ -1,26 +1,36 @@
-#ifndef DICT_DICT_HH
-#define DICT_DICT_HH
+#ifndef DICT_ALLOCATOR_HH
+#define DICT_ALLOCATOR_HH
+
+#include <cstdlib>
 
 namespace dict {
+  template <typename T>
   class GeneralAllocator {
   public:
-    template <typename T>
     void* allocate() {
-      return new T;
+      return std::malloc(sizeof(T));
     }
     
-    template <typename T>
     void* allocate(unsigned count) {
-      return new T[count];
+      return std::malloc(sizeof(T)*count);
     }
 
+    // TODO: rename
+    void free(void* ptr) {
+      std::free(ptr);
+    }
+
+    static GeneralAllocator& instance() {
+      static GeneralAllocator a;
+      return a;
+    }
+  };
+
+  class CacheAllocator {
     
   };
 
-  class CachedChunkAllocator {
-    
-  };
-
+  // TODO: rename
   class NodeAllocator {
   };
 }

@@ -238,7 +238,7 @@ namespace dict {
     unsigned position;
   };
 
-  template<typename Key, typename Value>
+  template<typename Key, typename Value, class Alloca = GeneralAllocator<Node<Key,Value>* > >
   class dict {
   public:
     dict() :
@@ -246,11 +246,12 @@ namespace dict {
       bitlen(3),
       count(0),
       rehash_threshold(0.75),
-      alc(8) // XXX:
+      alc(8), // XXX:
+      acc(Alloca::instance())
     {
       bucket_size = 1 << bitlen;
       //buckets = new BucketNode* [bucket_size];
-      buckets = new (g_gc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
+      buckets = new (acc.allocate(bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
 
       bitmask = (1 << bitlen)-1;
@@ -261,8 +262,7 @@ namespace dict {
     }
 
     ~dict() {
-      //delete [] buckets;
-      g_gc.release(buckets, sizeof(BucketNode*)*bucket_size);
+      acc.free(buckets);
     }
 
     bool contains(const Key& key) const {
@@ -326,7 +326,7 @@ namespace dict {
       bitmask = (1 << bitlen)-1;
 
       // buckets = new BucketNode*[bucket_size];
-      buckets = new (g_gc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
+      buckets = new (acc.allocate(bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
       recalc_rehash_border();
 
@@ -335,7 +335,7 @@ namespace dict {
           node = rehash_node(node);
       //delete [] old_buckets;
       //std::cerr << "+" << (long)old_buckets << std::endl;
-      g_gc.release(old_buckets, sizeof(BucketNode*)*old_bucket_size);
+      acc.free(old_buckets);
     }
     
     BucketNode* rehash_node(BucketNode* node) {
@@ -404,6 +404,7 @@ namespace dict {
     BucketNode TAIL;
 
     Allocator<BucketNode> alc;
+    Alloca& acc;
   };
 }
 
