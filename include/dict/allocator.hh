@@ -3,8 +3,10 @@
 
 #include <cstdlib>
 
-#define offsetof(TYPE, FIELD) ((std::size_t) &((TYPE *) 0)->FIELD)
-#define obj_ptr(TYPE, FIELD, FIELD_PTR) ((TYPE*)((char*)FIELD_PTR - offsetof(TYPE, FIELD)))
+#define offsetof(TYPE, FIELD, DUMMY_PTR) \
+  ((char*)(&((TYPE *) DUMMY_PTR)->FIELD)-(char*)DUMMY_PTR)
+#define obj_ptr(TYPE, FIELD, FIELD_PTR) \
+  ((TYPE*)((char*)FIELD_PTR - offsetof(TYPE, FIELD, FIELD_PTR)))
 
 namespace dict {
   /**
