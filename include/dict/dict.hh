@@ -4,6 +4,17 @@
 #include <cstddef>
 #include <algorithm>
 
+// XXX:
+#define ptr_cast(type, addr) \
+          reinterpret_cast<type*>(addr)
+#define ptr_dec(type, addr, nbytes) \
+          ptr_cast(type, ptr_cast(char, addr) - nbytes)
+#define base(type) ptr_cast(type, NULL)
+#define field_offset(type, field, addr) \
+          (ptr_cast(char, base(type)->field) - base(char))
+#define get_object_head(type, field, addr) \
+          ptr_dec(type, addr, field_offset(type, field, addr))
+
 /*
  * TODO: 
  * - アロケータ自作 (ハッシュテーブル単位でも。template引数でmalloc版と独自版を選べるようにする)
@@ -14,6 +25,8 @@
  * - Node::TAIL
  */
 namespace dict {
+  const unsigned GOLDEN_RATIO_PRIME=(2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
+
   // TODO: 別ファイルに分ける
   // TODO: lisp/dictのcommit and push (inline展開指定ミス)
   template<typename Key>
@@ -23,12 +36,12 @@ namespace dict {
 
   template <>
   unsigned hash(const int& key) {
-    return key;
+    return key * GOLDEN_RATIO_PRIME;
   }
 
   template <>
   unsigned hash(const unsigned& key) {
-    return key;
+    return key * GOLDEN_RATIO_PRIME;
   }
 
   template<typename Key, typename Value>
@@ -49,13 +62,22 @@ namespace dict {
       used_size(0),
       free_size(0)
     {
-      used = new Node;
-      free = new Node;
+      used = new Node; // XXX: sizeof(T)分無駄
+      free = new Node; // XXX: sizeof(T)分無駄
     }
 
     ~Cache() {
-      while(!used->empty()) used->delete_next();
-      while(!free->empty()) free->delete_next();
+      for(Node* n=used->next; n!=used;) {
+        Node* tmp = n;
+        n=n->next;
+        delete tmp;
+      }
+
+      for(Node* n=free->next; n!=free;) {
+        Node* tmp = n;
+        n=n->next;
+        delete tmp;
+      }
         
       delete used;
       delete free;
@@ -72,19 +94,17 @@ namespace dict {
       }
       used->append(x);
       used_size++;
-      //std::cerr << "- " << (long)&x->buf << std::endl;
+
       return &x->buf;
     }
 
-    void release(T* addr) { 
-      Node* x = reinterpret_cast<Node*>(reinterpret_cast<char *>(addr)-(sizeof(Node*)*2));
-      //std::cerr << "# " << (long)addr << std::endl;
-      //std::cerr << "@ " << (long)&x->buf << std::endl;
+    void release(void* addr) { 
+      Node* x = get_object_head(Node, buf, addr);
       x->unlink();
       used_size--;
 
       // XXX: 8
-      if(used_size+8 < free_size) {
+      if(free_size > 8 && used_size < free_size) {
         delete x;
       } else {
         free->append(x);
@@ -105,18 +125,13 @@ namespace dict {
       void append(Node* node) {
         node->next = next;
         node->pred = this;
+        next->pred = node;
         next = node;
       }
       
       void unlink() {
         pred->next = next;
         next->pred = pred;
-      }
-
-      void delete_next() {
-        Node* tmp = next;
-        tmp->unlink();
-        delete tmp;
       }
     };
     
@@ -127,6 +142,54 @@ namespace dict {
     unsigned free_size;
   };
 
+  // TODO: MSB
+  class GlobalCache {
+  public:
+    void* allocate(unsigned size) {
+      if(size > 1024)
+        return new char[size];
+      if(size > 512)
+        return c1024.get();
+      if(size > 256)
+        return c512.get();
+      if(size > 128)
+        return c256.get();
+      if(size > 64)
+        return c128.get();
+      if(size > 32)
+        return c64.get();
+      return c32.get();
+    }
+    
+    void release(void* addr, unsigned size) {
+      if(size > 1024)
+        delete static_cast<char*>(addr);
+      else if(size > 512)
+        c1024.release(addr);
+      else if(size > 256)
+        c512.release(addr);
+      else if(size > 128)
+        c256.release(addr);
+      else if(size > 64)
+        c128.release(addr);
+      else if(size > 32)
+        c64.release(addr);
+      else
+        c32.release(addr);
+    }
+
+  private:
+    Cache<char[32]> c32;
+    Cache<char[64]> c64;
+    Cache<char[128]> c128;
+    Cache<char[256]> c256;
+    Cache<char[512]> c512;
+    Cache<char[1024]> c1024;
+  };
+  
+  // XXX:
+  GlobalCache g_gc;
+
   template<typename T>
   class Allocator { // NodeAllocator
   private:
@@ -136,11 +199,12 @@ namespace dict {
       Chunk* prev;
 
       Chunk(unsigned size) : buf(NULL), size(size), prev(NULL) {
-        buf = new T[size];
+        buf = new (g_gc.allocate(sizeof(T)*size)) T[size];
       }
 
       ~Chunk() {
-        delete [] buf;
+        g_gc.release(buf, sizeof(T)*size);
+        //delete [] buf;
         delete prev;
       }
     };
@@ -177,40 +241,6 @@ namespace dict {
     unsigned position;
   };
 
-  class BucketsCache {
-  public:
-    void* allocate(unsigned size) {
-      switch(size) {
-      case sizeof(void*[8]):
-        return c8.get();
-      case sizeof(void*[16]):
-        return c16.get();
-      default:
-        return new char[size];
-      }
-    }
-
-    void release(void* addr, unsigned size) {
-      switch(size) {
-      case sizeof(void*[8]):
-        c8.release(static_cast<void* (*)[8]>(addr));
-        break;
-      case sizeof(void*[16]):
-        c16.release(static_cast<void* (*)[16]>(addr));
-        break;
-      default:
-        delete [] static_cast<char*>(addr);
-      }
-    }
-    
-  private:
-    Cache<void*[8]> c8;
-    Cache<void*[16]> c16;    
-  };
-  
-  // XXX:
-  BucketsCache g_bc;
-
   template<typename Key, typename Value>
   class dict {
   public:
@@ -218,12 +248,12 @@ namespace dict {
       buckets(NULL),
       bitlen(3),
       count(0),
-      rehash_threshold(1.0),
+      rehash_threshold(0.75),
       alc(8) // XXX:
     {
       bucket_size = 1 << bitlen;
       //buckets = new BucketNode* [bucket_size];
-      buckets = new (g_bc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
+      buckets = new (g_gc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
 
       bitmask = (1 << bitlen)-1;
@@ -235,7 +265,7 @@ namespace dict {
 
     ~dict() {
       //delete [] buckets;
-      g_bc.release(buckets, sizeof(BucketNode*)*bucket_size);
+      g_gc.release(buckets, sizeof(BucketNode*)*bucket_size);
     }
 
     bool contains(const Key& key) const {
@@ -277,14 +307,14 @@ namespace dict {
     typedef Node<Key,Value> BucketNode;
 
     struct Candidate {
-      BucketNode** place;
+      BucketNode** place; // => pred
       BucketNode* pred;
       BucketNode* node;
     };
 
     struct Place {
-      BucketNode** place;
-      BucketNode* pred;  // XXX: 不要？
+      BucketNode** place; // => pred
+      //BucketNode* pred;  // XXX: 不要？ 
       BucketNode* node;
       unsigned hashcode;
     };
@@ -299,7 +329,7 @@ namespace dict {
       bitmask = (1 << bitlen)-1;
 
       // buckets = new BucketNode*[bucket_size];
-      buckets = new (g_bc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
+      buckets = new (g_gc.allocate(sizeof(BucketNode*)*bucket_size)) BucketNode* [bucket_size];
       std::fill(buckets, buckets+bucket_size, &TAIL);
       recalc_rehash_border();
 
@@ -308,7 +338,7 @@ namespace dict {
           node = rehash_node(node);
       //delete [] old_buckets;
       //std::cerr << "+" << (long)old_buckets << std::endl;
-      g_bc.release(old_buckets, sizeof(BucketNode*)*old_bucket_size);
+      g_gc.release(old_buckets, sizeof(BucketNode*)*old_bucket_size);
     }
     
     BucketNode* rehash_node(BucketNode* node) {
@@ -335,14 +365,14 @@ namespace dict {
       for(;;) {
         if(hashcode != ca.node->hashcode) {
           p.node = ca.node;
-          p.pred = ca.pred;
+          //p.pred = ca.pred;
           p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;            
           return false;
         } 
         if(key == ca.node->key) {
           p.node = ca.node;
-          p.pred = ca.pred;
+          //p.pred = ca.pred;
           p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;
           return true;

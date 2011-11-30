@@ -62,7 +62,8 @@ void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
   unsigned count = 0;
 
   for(int i=0; i < DSIZE; i += N) {
-    dict::dict<int,int> dic;    
+    dict::dict<int,int> dic;  
+    
     for(int j=0; j < N; j++)
       dic.put(data1[i+j], data1[i+j]);
     for(int j=0; j < N; j++)
@@ -148,11 +149,6 @@ int main(int argc, char** argv) {
   std::cout << "unorderedmap: small" << std::endl;
   unorderedmap_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
-  
-  dict::Cache<int> c;
-  c.get();
-  
-  dict::BucketsCache bc;
-  bc.allocate(10);
+
   return 0;
 }
