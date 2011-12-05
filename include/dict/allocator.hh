@@ -235,6 +235,12 @@ namespace dict {
       chunk->recycles++;
       head->next = ptr;
     }
+
+    void clear() {
+      delete chunk->prev;
+      chunk->prev = NULL;
+      position = 0;
+    }
     
   private:
     void enlarge () {

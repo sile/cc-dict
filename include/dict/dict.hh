@@ -10,7 +10,6 @@
 /*
  * TODO: 
  * - each
- * - clear
  */
 namespace dict {
   template<typename Key, typename Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
@@ -84,6 +83,11 @@ namespace dict {
       }
     }
     
+    void clear() {
+      count = 0;
+      std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
+      alc.clear();
+    }
     /*
       void each(Callback fn) {
       
