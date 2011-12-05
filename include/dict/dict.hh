@@ -23,7 +23,12 @@ namespace dict {
     unsigned hashcode;
     Key key;
     Value value;
+
+    Node() : next(this), hashcode(-1) {}
+    static const Node TAIL;
   };
+  template<typename Key, typename Value>
+  const Node<Key,Value> Node<Key,Value>::TAIL;
 
   template<typename Key, typename Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<Node<Key,Value>* > >
   class dict {
@@ -31,21 +36,17 @@ namespace dict {
     dict() :
       buckets(NULL),
       bitlen(3),
+      bucket_size(1 << bitlen),
       count(0),
       rehash_threshold(0.8),
-      alc(8), // XXX:
+      alc(bucket_size), // XXX:
       acc(Alloca::instance()) // TODO: 引数でも指定可能に
     {
-      bucket_size = 1 << bitlen;
-
       buckets = new (acc.allocate(bucket_size)) BucketNode* [bucket_size];
-      std::fill(buckets, buckets+bucket_size, &TAIL);
+      std::fill(buckets, buckets+bucket_size, const_cast<BucketNode*>(&BucketNode::TAIL));
 
       bitmask = (1 << bitlen)-1;
       recalc_rehash_border();
-
-      TAIL.next = &TAIL;
-      TAIL.hashcode = -1;
     }
 
     ~dict() {
@@ -114,11 +115,11 @@ namespace dict {
 
 
       buckets = new (acc.allocate(bucket_size)) BucketNode* [bucket_size];
-      std::fill(buckets, buckets+bucket_size, &TAIL);
+      std::fill(buckets, buckets+bucket_size, const_cast<BucketNode*>(&BucketNode::TAIL));
       recalc_rehash_border();
 
       for(unsigned i=0; i < old_bucket_size; i++)
-        for(BucketNode* node=old_buckets[i]; node != &TAIL;)
+        for(BucketNode* node=old_buckets[i]; node != &BucketNode::TAIL;)
           node = rehash_node(node);
 
       acc.free(old_buckets);
@@ -149,14 +150,14 @@ namespace dict {
         if(hashcode != ca.node->hashcode) {
           p.node = ca.node;
           //p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
+          p.place = ca.pred==&BucketNode::TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;            
           return false;
         } 
         if(key == ca.node->key) {
           p.node = ca.node;
           //p.pred = ca.pred;
-          p.place = ca.pred==&TAIL ? ca.place : &ca.pred->next;
+          p.place = ca.pred==&BucketNode::TAIL ? ca.place : &ca.pred->next;
           p.hashcode = hashcode;
           return true;
         }
@@ -168,27 +169,25 @@ namespace dict {
     void find_candidate(const unsigned hashcode, Candidate& ca) const {
       const unsigned index = hashcode & bitmask;
       
-      BucketNode* pred = const_cast<BucketNode*>(&TAIL);
+      BucketNode* pred = const_cast<BucketNode*>(&BucketNode::TAIL);
       BucketNode* node = buckets[index];
       for(; node->hashcode < hashcode; pred=node, node=node->next);
 
-      ca.place = pred==&TAIL ? &buckets[index] : &pred->next;
+      ca.place = pred==&BucketNode::TAIL ? &buckets[index] : &pred->next;
       ca.pred = pred;
       ca.node = node;
     }
 
   private:
     BucketNode** buckets;
-    unsigned bucket_size; // => buckets_size
     unsigned bitlen;
+    unsigned bucket_size; // => buckets_size
     unsigned bitmask;
     unsigned count;
     
     unsigned rehash_border;
     float rehash_threshold;
     
-    BucketNode TAIL;
-
     Allocator<BucketNode> alc;
     Alloca& acc;
 

@@ -173,10 +173,7 @@ namespace dict {
     Cache<Chunk<T[32]> > x32;
   };
 
-  // TODO: rename
-  class NodeAllocator {
-  };
-
+  
   // TODO: 整理
   template<typename T, class Alloca = CachedAllocator<T> >
   class Allocator { // NodeAllocator
