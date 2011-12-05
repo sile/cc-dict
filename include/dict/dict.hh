@@ -2,6 +2,7 @@
 #define DICT_DICT_HH
 
 #include "allocator.hh"
+#include "hash.hh"
 
 #include <cstddef>
 #include <algorithm>
@@ -16,85 +17,15 @@
  * - Node::TAIL
  */
 namespace dict {
-  const unsigned GOLDEN_RATIO_PRIME=(2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
-
-  // TODO: 別ファイルに分ける
-  template<typename Key>
-  unsigned hash(const Key& key) {
-    return key.hash();
-  }
-
-  template <>
-  unsigned hash(const int& key) {
-    return key * GOLDEN_RATIO_PRIME;
-  }
-
-  template <>
-  unsigned hash(const unsigned& key) {
-    return key * GOLDEN_RATIO_PRIME;
-  }
-
   template<typename Key, typename Value>
   struct Node {
+    Node* next;
     unsigned hashcode;
     Key key;
     Value value;
-    
-    Node* next;
   };
 
-  template<typename T, class Alloca = CachedAllocator<T> >
-  class Allocator { // NodeAllocator
-  private:
-    struct Chunk {
-      T* buf;
-      unsigned size;
-      Chunk* prev;
-      Alloca& a;
-
-      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
-        buf = new (a.allocate(size)) T[size];
-      }
-
-      ~Chunk() {
-        a.free(buf);
-        delete prev;
-      }
-    };
-
-  public:
-    Allocator(unsigned initial_size) :
-      chunk(NULL),
-      position(0)
-    {
-      chunk = new Chunk(initial_size);
-    }
-
-    ~Allocator() {
-      delete chunk;
-    }
-    
-    T* allocate() {
-      if(position == chunk->size)
-        enlarge();
-      
-      return chunk->buf + (position++);
-    }
-    
-  private:
-    void enlarge () {
-      position = 0;
-      Chunk* new_chunk = new Chunk(chunk->size*2);
-      new_chunk->prev = chunk;
-      chunk = new_chunk;
-    }
-
-  private:
-    Chunk* chunk;
-    unsigned position;
-  };
-
-  template<typename Key, typename Value, class Alloca = CachedAllocator<Node<Key,Value>* > >
+  template<typename Key, typename Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<Node<Key,Value>* > >
   class dict {
   public:
     dict() :
@@ -260,6 +191,8 @@ namespace dict {
 
     Allocator<BucketNode> alc;
     Alloca& acc;
+
+    static HASH hash;
   };
 }
 

@@ -176,6 +176,60 @@ namespace dict {
   // TODO: rename
   class NodeAllocator {
   };
+
+  // TODO: 整理
+  template<typename T, class Alloca = CachedAllocator<T> >
+  class Allocator { // NodeAllocator
+  private:
+    struct Chunk {
+      T* buf;
+      unsigned size;
+      Chunk* prev;
+      Alloca& a;
+
+      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
+        buf = new (a.allocate(size)) T[size];
+      }
+
+      ~Chunk() {
+        a.free(buf);
+        delete prev;
+      }
+    };
+
+  public:
+    Allocator(unsigned initial_size) :
+      chunk(NULL),
+      position(0)
+    {
+      chunk = new Chunk(initial_size);
+    }
+
+    ~Allocator() {
+      delete chunk;
+    }
+    
+    T* allocate() {
+      if(position == chunk->size)
+        enlarge();
+      
+      return chunk->buf + (position++);
+    }
+    
+  private:
+    void enlarge () {
+      position = 0;
+      Chunk* new_chunk = new Chunk(chunk->size*2);
+      new_chunk->prev = chunk;
+      chunk = new_chunk;
+    }
+
+  private:
+    Chunk* chunk;
+    unsigned position;
+  };
+
+
 }
 
 #endif
