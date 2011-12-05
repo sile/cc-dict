@@ -225,18 +225,13 @@ namespace dict {
     }
 
     void release(T* ptr) {
-      for(Chunk* cur = chunk; cur != NULL /*XXX:*/; cur = cur->prev)
-        if(cur->buf <= ptr && ptr < cur->buf+cur->size) {
-          // TODO: T = Node<,> として明示的に表明する (recyclesも不要になる)
-          T* head = chunk->buf + position;
-          if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
-            ptr->next = head->next;
-
-          chunk->recycles++;
-          head->next = ptr;
-          
-          return;
-        }
+      // TODO: T = Node<,> として明示的に表明する (recyclesも不要になる)
+      T* head = chunk->buf + position;
+      if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
+        ptr->next = head->next;
+      
+      chunk->recycles++;
+      head->next = ptr;
     }
     
   private:

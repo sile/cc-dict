@@ -50,10 +50,7 @@ namespace dict {
 
     Value* find(const Key& key) const {
       BucketNode** place;
-      if(find_node(key,place))
-        return &(*place)->value;
-      else
-        return const_cast<Value*>(end());
+      return find_node(key,place) ? &(*place)->value : const_cast<Value*>(end());
     }
 
     unsigned size() const { return count; }
