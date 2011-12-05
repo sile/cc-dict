@@ -88,6 +88,7 @@ void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
       if(dic.find(data2[i+j]) != dic.end())
         count++;
   }
+
   std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
 }
 

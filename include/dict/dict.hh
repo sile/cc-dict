@@ -57,12 +57,14 @@ namespace dict {
       node** place;
 
       bool exists = find_node(key, place, hashcode);
+      if(exists)
+        return (*place)->value;
+      
+      *place = new (alc.allocate()) node(key,Value(),*place,hashcode);
       Value& value = (*place)->value;
-      if(exists==false) {
-        *place = new (alc.allocate()) node(key,Value(),*place,hashcode);
-        if(++count >= rehash_border)
-          enlarge();
-      }
+      if(++count >= rehash_border)
+        enlarge();
+
       return value;
     }
 
@@ -88,11 +90,20 @@ namespace dict {
       std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
       alc.clear();
     }
-    /*
-      void each(Callback fn) {
-      
-      }
-     */
+
+    template<class callback>
+    void each(const callback& fn) const {
+      for(unsigned i=0; i < bucket_size; i++)
+        for(node* cur=buckets[i]; cur != &node::tail; cur = cur->next)
+          fn(cur->key, cur->value);
+    }
+
+    template<class callback>
+    void each(callback& fn) const {
+      for(unsigned i=0; i < bucket_size; i++)
+        for(node* cur=buckets[i]; cur != &node::tail; cur = cur->next)
+          fn(cur->key, cur->value);      
+    }
 
   private:
     void init() {
