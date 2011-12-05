@@ -208,11 +208,12 @@ namespace dict {
     }
     
     T* allocate() {
-      if(chunk->recycles > 0) {
+      if(chunk->recycles > 0) { // head->next != 0, とかで判断する？
         T* head = chunk->buf + position;
         T* p = head->next;
         
-        if(--chunk->recycles > 0)
+        --chunk->recycles;
+        //if(chunk->recycles > 0)
           head->next = p->next;
         
         return p;
@@ -226,8 +227,9 @@ namespace dict {
 
     void release(T* ptr) {
       // TODO: T = Node<,> として明示的に表明する (recyclesも不要になる)
+      ///       => Tをunionにするのもありかも
       T* head = chunk->buf + position;
-      if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
+      //if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
         ptr->next = head->next;
       
       chunk->recycles++;
