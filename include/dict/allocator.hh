@@ -179,12 +179,13 @@ namespace dict {
   class Allocator { // NodeAllocator
   private:
     struct Chunk {
+      unsigned recycles;
       T* buf;
       unsigned size;
       Chunk* prev;
       Alloca& a;
 
-      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
+      Chunk(unsigned size) : recycles(0), buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
         buf = new (a.allocate(size)) T[size];
       }
 
@@ -207,10 +208,35 @@ namespace dict {
     }
     
     T* allocate() {
-      if(position == chunk->size)
+      if(chunk->recycles > 0) {
+        T* head = chunk->buf + position;
+        T* p = head->next;
+        
+        if(--chunk->recycles > 0)
+          head->next = p->next;
+        
+        return p;
+      }
+      
+      if(position == chunk->size-1) // XXX: releaseとうまいことタイミングを合わせて-1はなくす
         enlarge();
       
       return chunk->buf + (position++);
+    }
+
+    void release(T* ptr) {
+      for(Chunk* cur = chunk; cur != NULL /*XXX:*/; cur = cur->prev)
+        if(cur->buf <= ptr && ptr < cur->buf+cur->size) {
+          // TODO: T = Node<,> として明示的に表明する (recyclesも不要になる)
+          T* head = chunk->buf + position;
+          if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
+            ptr->next = head->next;
+
+          chunk->recycles++;
+          head->next = ptr;
+          
+          return;
+        }
     }
     
   private:

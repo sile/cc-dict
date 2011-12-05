@@ -37,24 +37,39 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   int count = 0;
 
   for(int i=0; i < DSIZE; i++) {
-    dic.put(data1[i], data1[i]);
+    dic[data1[i]] = data1[i];
   }
   std::cout << " put: " << gettime()-beg_t << " #" << dic.size() << std::endl;
 
   beg_t = gettime();
   count = 0;
   for(int i=0; i < DSIZE; i++) {
-    if(dic.contains(data1[i]))
+    if(dic.find(data1[i]) != dic.end())
       count++;
   }
   std::cout << " get1: " << gettime()-beg_t << " #" << count << std::endl;
   
   count = 0;
   for(int i=0; i < DSIZE; i++) {
-    if(dic.contains(data2[i]))
+    if(dic.find(data2[i]) != dic.end())
       count++;
   }
   std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;
+
+  beg_t = gettime();
+  count = 0;
+  for(int i=0; i < DSIZE; i++) {
+    count += dic.erase(data1[i]);
+  }
+  std::cout << " erase: " << gettime()-beg_t << " #" << count << std::endl;  
+
+  beg_t = gettime();
+  count = 0;
+  for(int i=0; i < DSIZE; i++) {
+    if(dic.find(data2[i]) != dic.end())
+      count++;
+  }
+  std::cout << " get3: " << gettime()-beg_t << " #" << count << std::endl;
 }
 
 void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
@@ -65,12 +80,12 @@ void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
     dict::dict<int,int> dic;  
     
     for(int j=0; j < N; j++)
-      dic.put(data1[i+j], data1[i+j]);
+      dic[data1[i+j]] = data1[i+j];
     for(int j=0; j < N; j++)
-      if(dic.contains(data1[i+j]))
+      if(dic.find(data1[i+j]) != dic.end())
         count++;
     for(int j=0; j < N; j++)
-      if(dic.contains(data2[i+j]))
+      if(dic.find(data2[i+j]) != dic.end())
         count++;
   }
   std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
@@ -119,6 +134,21 @@ void unorderedmap_bench(int data1[DSIZE], int data2[DSIZE]) {
       count++;
   }
   std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;  
+
+  beg_t = gettime();
+  count = 0;
+  for(int i=0; i < DSIZE; i++) {
+    count += dic.erase(data1[i]);
+  }
+  std::cout << " erase: " << gettime()-beg_t << " #" << count << std::endl;  
+
+  beg_t = gettime();
+  count = 0;
+  for(int i=0; i < DSIZE; i++) {
+    if(dic.find(data2[i]) != dic.end())
+      count++;
+  }
+  std::cout << " get3: " << gettime()-beg_t << " #" << count << std::endl;  
 }
 
 int main(int argc, char** argv) {
