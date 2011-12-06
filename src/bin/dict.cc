@@ -173,13 +173,13 @@ int main(int argc, char** argv) {
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;  
 
   beg_t = gettime();
-  std::cout << "dict: small" << std::endl;
-  dict_bench_small(data1, data2);
+  std::cout << "unorderedmap: small" << std::endl;
+  unorderedmap_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
   beg_t = gettime();
-  std::cout << "unorderedmap: small" << std::endl;
-  unorderedmap_bench_small(data1, data2);
+  std::cout << "dict: small" << std::endl;
+  dict_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
   return 0;

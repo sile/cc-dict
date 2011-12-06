@@ -8,8 +8,8 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class Hash = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
-  class dict {
+  template<class Key, class Value, class Hash = dict::hash<Key> >
+  class dict { // TODO: => map?
   private:
     struct node {
       node* next;
@@ -20,7 +20,7 @@ namespace dict {
       node() : next(this), hashcode(MAX_HASHCODE) {}
 
       node(const Key& key, const Value& value, node* next, unsigned hashcode) 
-      : next(next), hashcode(hashcode), key(key), value(value) {}
+        : next(next), hashcode(hashcode), key(key), value(value) {}
     
       static const node tail;
     };
@@ -31,14 +31,14 @@ namespace dict {
       bitlen(INITIAL_BITLEN),
       count(0),
       rehash_threshold(rehash_threshold),
-      node_alloca(1 << bitlen),
-      acc(Alloca::instance()) // TODO: 引数でも指定可能に
+      node_alloca()
     {
       init();
     }
 
     ~dict() {
-      acc.free(buckets);
+      if(buckets != reinterpret_cast<node**>(&init_nodes))
+        delete buckets;
     }
 
     Value* find(const Key& key) const {
@@ -104,12 +104,11 @@ namespace dict {
     void init() {
       bucket_size = 1 << bitlen;
       bitmask = bucket_size-1;
-
-      buckets = new (acc.allocate(bucket_size)) node* [bucket_size];
+      buckets = buckets==NULL ? reinterpret_cast<node**>(&init_nodes) : new node* [bucket_size];
       std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
       rehash_border = bucket_size * rehash_threshold;
     }
-    
+
     void enlarge() {
       const unsigned old_bucket_size = bucket_size;
       node** old_buckets = buckets;
@@ -118,10 +117,10 @@ namespace dict {
       init();
 
       for(unsigned i=0; i < old_bucket_size; i++)
-        for(node* cur=old_buckets[i]; cur != &node::tail;)
-          cur = rehash_node(cur);
+        for(node* cur=old_buckets[i]; cur != &node::tail; cur = rehash_node(cur));
 
-      acc.free(old_buckets);
+      if(old_buckets != reinterpret_cast<node**>(&init_nodes))
+        delete old_buckets;
     }
     
     node* rehash_node(node* cur) {
@@ -174,19 +173,20 @@ namespace dict {
     unsigned rehash_border;
     
     fixed_size_allocator<sizeof(node)> node_alloca;
-    Alloca& acc;
 
+    node* init_nodes[1 << INITIAL_BITLEN];
+    
     static const Hash hash;
   };
 
-  template<class Key, class Value, class Hash, class Alloca>
-  const typename dict<Key,Value,Hash,Alloca>::node dict<Key,Value,Hash,Alloca>::node::tail;
+  template<class Key, class Value, class Hash>
+  const typename dict<Key,Value,Hash>::node dict<Key,Value,Hash>::node::tail;
 
-  template<class Key, class Value, class Hash, class Alloca>
-  const float dict<Key,Value,Hash,Alloca>::DEFAULT_REHASH_THRESHOLD = 0.75;
+  template<class Key, class Value, class Hash>
+  const float dict<Key,Value,Hash>::DEFAULT_REHASH_THRESHOLD = 0.75;
 
-  template<class Key, class Value, class Hash, class Alloca>
-  const Hash dict<Key,Value,Hash,Alloca>::hash;
+  template<class Key, class Value, class Hash>
+  const Hash dict<Key,Value,Hash>::hash;
 }
 
 #endif
