@@ -7,12 +7,8 @@
 #include <cstddef>
 #include <algorithm>
 
-/*
- * TODO: 
- * - each
- */
 namespace dict {
-  template<typename Key, typename Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
+  template<class Key, class Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
   class dict {
   public:
     struct node {
@@ -21,7 +17,7 @@ namespace dict {
       Key key;
       Value value;
       
-      node() : next(this), hashcode(-1) {}
+      node() : next(this), hashcode(MAX_HASHCODE) {}
 
       node(const Key& key, const Value& value, node* next, unsigned hashcode) 
       : next(next), hashcode(hashcode), key(key), value(value) {}
@@ -32,10 +28,21 @@ namespace dict {
   public:
     dict() :
       buckets(NULL),
-      bitlen(3), 
+      bitlen(INITIAL_BITLEN),
       count(0),
-      rehash_threshold(0.75), 
-      alc(8), // XXX:
+      rehash_threshold(DEFAULT_REHASH_THRESHOLD),
+      node_alloca(1 << bitlen),
+      acc(Alloca::instance()) // TODO: 引数でも指定可能に
+    {
+      init();
+    }
+
+    dict(float rehash_threshold) :
+      buckets(NULL),
+      bitlen(INITIAL_BITLEN),
+      count(0),
+      rehash_threshold(rehash_threshold),
+      node_alloca(1 << bitlen),
       acc(Alloca::instance()) // TODO: 引数でも指定可能に
     {
       init();
@@ -56,11 +63,10 @@ namespace dict {
       unsigned hashcode;
       node** place;
 
-      bool exists = find_node(key, place, hashcode);
-      if(exists)
+      if(find_node(key, place, hashcode))
         return (*place)->value;
       
-      *place = new (alc.allocate()) node(key,Value(),*place,hashcode);
+      *place = new (node_alloca.allocate()) node(key,Value(),*place,hashcode);
       Value& value = (*place)->value;
       if(++count >= rehash_border)
         enlarge();
@@ -78,7 +84,7 @@ namespace dict {
         node* del = *place;
         *place = del->next;
         --count;
-        alc.release(del);
+        node_alloca.release(del);
         return 1;
       } else {
         return 0;
@@ -88,7 +94,7 @@ namespace dict {
     void clear() {
       count = 0;
       std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
-      alc.clear();
+      node_alloca.clear();
     }
 
     template<class callback>
@@ -146,7 +152,7 @@ namespace dict {
     }
     
     bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
-      hashcode = hash(key) & ORDINAL_HASHCODE_MASK;
+      hashcode = hash(key) & ORDINAL_NODE_HASHCODE_MASK;
       find_candidate(hashcode, place);
 
       for(node* node=*place; hashcode==node->hashcode; node=*(place=&node->next))
@@ -160,8 +166,13 @@ namespace dict {
       for(node* node=*(place=&buckets[index]); node->hashcode < hashcode; node=*(place=&node->next));
     }
 
+  public:
+    static const float DEFAULT_REHASH_THRESHOLD;
+    
   private:
-    static const unsigned ORDINAL_HASHCODE_MASK = -1>>1;
+    static const unsigned MAX_HASHCODE = static_cast<unsigned>(-1);
+    static const unsigned ORDINAL_NODE_HASHCODE_MASK = MAX_HASHCODE>>1;
+    static const unsigned INITIAL_BITLEN = 3;
 
   private:
     node** buckets;
@@ -170,17 +181,20 @@ namespace dict {
     unsigned bitmask;
     unsigned count;
     
-    float rehash_threshold;
+    const float rehash_threshold;
     unsigned rehash_border;
     
-    Allocator<node> alc;
+    Allocator<node> node_alloca;
     Alloca& acc;
 
-    static HASH hash;
+    static const HASH hash;
   };
 
-  template<typename Key, typename Value, class HASH, class Alloca>
+  template<class Key, class Value, class HASH, class Alloca>
   const typename dict<Key,Value,HASH,Alloca>::node dict<Key,Value,HASH,Alloca>::node::tail;
+
+  template<class Key, class Value, class HASH, class Alloca>
+  const float dict<Key,Value,HASH,Alloca>::DEFAULT_REHASH_THRESHOLD = 0.75;
 }
 
 #endif
