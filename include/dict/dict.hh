@@ -8,9 +8,9 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class HASH = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
+  template<class Key, class Value, class Hash = dict::hash<Key>, class Alloca = CachedAllocator<void*> > // XXX: void*
   class dict {
-  public:
+  private:
     struct node {
       node* next;
       unsigned hashcode;
@@ -26,18 +26,7 @@ namespace dict {
     };
     
   public:
-    dict() :
-      buckets(NULL),
-      bitlen(INITIAL_BITLEN),
-      count(0),
-      rehash_threshold(DEFAULT_REHASH_THRESHOLD),
-      node_alloca(1 << bitlen),
-      acc(Alloca::instance()) // TODO: 引数でも指定可能に
-    {
-      init();
-    }
-
-    dict(float rehash_threshold) :
+    dict(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       buckets(NULL),
       bitlen(INITIAL_BITLEN),
       count(0),
@@ -122,8 +111,8 @@ namespace dict {
     }
     
     void enlarge() {
+      const unsigned old_bucket_size = bucket_size;
       node** old_buckets = buckets;
-      unsigned old_bucket_size = bucket_size;
 
       bitlen++;
       init();
@@ -184,17 +173,17 @@ namespace dict {
     const float rehash_threshold;
     unsigned rehash_border;
     
-    Allocator<node> node_alloca;
+    node_allocator<node> node_alloca;
     Alloca& acc;
 
-    static const HASH hash;
+    static const Hash hash;
   };
 
-  template<class Key, class Value, class HASH, class Alloca>
-  const typename dict<Key,Value,HASH,Alloca>::node dict<Key,Value,HASH,Alloca>::node::tail;
+  template<class Key, class Value, class Hash, class Alloca>
+  const typename dict<Key,Value,Hash,Alloca>::node dict<Key,Value,Hash,Alloca>::node::tail;
 
-  template<class Key, class Value, class HASH, class Alloca>
-  const float dict<Key,Value,HASH,Alloca>::DEFAULT_REHASH_THRESHOLD = 0.75;
+  template<class Key, class Value, class Hash, class Alloca>
+  const float dict<Key,Value,Hash,Alloca>::DEFAULT_REHASH_THRESHOLD = 0.75;
 }
 
 #endif

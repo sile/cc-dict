@@ -173,19 +173,24 @@ namespace dict {
     Cache<Chunk<T[32]> > x32;
   };
 
-  
-  // TODO: 整理
   template<typename T, class Alloca = CachedAllocator<T> >
-  class Allocator { // NodeAllocator
+  class fixed_size_allocator { 
   private:
+    union X {
+      T x;
+      struct link {
+        T* prev;
+      };
+    };
+    //dict::dict::node<int,int> a;
+
     struct Chunk {
-      unsigned recycles;
       T* buf;
       unsigned size;
       Chunk* prev;
       Alloca& a;
 
-      Chunk(unsigned size) : recycles(0), buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
+      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
         buf = new (a.allocate(size)) T[size];
       }
 
@@ -196,43 +201,38 @@ namespace dict {
     };
 
   public:
-    Allocator(unsigned initial_size) :
+    node_allocator(unsigned initial_size) :
       chunk(NULL),
-      position(0)
+      position(0),
+      recycle_count(0)
     {
       chunk = new Chunk(initial_size);
     }
 
-    ~Allocator() {
+    ~node_allocator() {
       delete chunk;
     }
     
     T* allocate() {
-      if(chunk->recycles > 0) { // head->next != 0, とかで判断する？
+      if(recycle_count > 0) {
         T* head = chunk->buf + position;
         T* p = head->next;
-        
-        --chunk->recycles;
-        //if(chunk->recycles > 0)
-          head->next = p->next;
-        
+        head->next = p->next;
+        recycle_count--;
         return p;
       }
       
-      if(position == chunk->size-1) // XXX: releaseとうまいことタイミングを合わせて-1はなくす
+      T* p = chunk->buf + position;
+      if(++position == chunk->size)
         enlarge();
       
-      return chunk->buf + (position++);
+      return p;
     }
 
     void release(T* ptr) {
-      // TODO: T = Node<,> として明示的に表明する (recyclesも不要になる)
-      ///       => Tをunionにするのもありかも
       T* head = chunk->buf + position;
-      //if(chunk->recycles > 0)  // recyclesはchunkではなく、Allocaterにつくべき
-        ptr->next = head->next;
-      
-      chunk->recycles++;
+      ptr->next = head->next;
+      recycle_count++;
       head->next = ptr;
     }
 
@@ -253,9 +253,8 @@ namespace dict {
   private:
     Chunk* chunk;
     unsigned position;
+    unsigned recycle_count;
   };
-
-
 }
 
 #endif
