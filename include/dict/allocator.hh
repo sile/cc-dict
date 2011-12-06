@@ -2,25 +2,44 @@
 #define DICT_ALLOCATOR_HH
 
 #include <cstdlib>
-#include <cstring>
+
 #define offsetof(TYPE, FIELD, DUMMY_PTR) \
   ((char*)(&((TYPE *) DUMMY_PTR)->FIELD)-(char*)DUMMY_PTR)
 #define obj_ptr(TYPE, FIELD, FIELD_PTR) \
   ((TYPE*)((char*)FIELD_PTR - offsetof(TYPE, FIELD, FIELD_PTR)))
 
 namespace dict {
+  template <class T>
+  class general_allocator {
+  public:
+    static general_allocator* create() { return NULL; }
+
+    void* allocate() { return std::malloc(sizeof(T)); }
+    void* allocate(unsigned count) { return std::malloc(sizeof(T)*count); }
+    void release(void* ptr) { std::free(ptr); }
+
+  private:
+    general_allocator() {}
+  };
+
   /**
    * GeneralAllocator
    */
   template <typename T>
   class GeneralAllocator {
   public:
+    GeneralAllocator() {}
+
     void* allocate() {
       return std::malloc(sizeof(T));
     }
     
     void* allocate(unsigned count) {
       return std::malloc(sizeof(T)*count);
+    }
+
+    void release(void* ptr) {
+      std::free(ptr);
     }
 
     // TODO: rename
@@ -179,7 +198,7 @@ namespace dict {
     struct chunk {
       union {
         char buf[CHUNK_SIZE];
-        chunk* next;
+        chunk* free_next;
       };
     };
     
@@ -191,25 +210,17 @@ namespace dict {
 
       chunk_block(unsigned size) : chunks(NULL), size(size), prev(NULL), a(Alloca::instance()) {
         chunks = new (a.allocate(size)) chunk[size];
-        init();
       }
       
       ~chunk_block() {
         a.free(chunks);
         delete prev;
       }
-
-      void init() {
-        for(unsigned i=0; i < size-1; i++)
-          chunks[i].next = &chunks[i+1];
-        chunks[size-1].next = NULL;        
-      }
     };
 
   public:
-    fixed_size_allocator(unsigned initial_size) : block(NULL), head(NULL) {
+    fixed_size_allocator(unsigned initial_size) : block(NULL), position(0), recycle_count(0) { 
       block = new chunk_block(initial_size);
-      head = block->chunks;
     }
 
     ~fixed_size_allocator() {
@@ -217,39 +228,58 @@ namespace dict {
     }
     
     void* allocate() {
-      if(head==NULL)
-        enlarge();
-
-      chunk* use = head;
-      head = use->next;
-      return use;
+      chunk* p;
+      
+      if(recycle_count > 0) {
+        recycle_count--;
+        
+        chunk* head = peek_chunk();
+        p = head->free_next;
+        head->free_next = p->free_next;
+      } else {
+        p = read_chunk();
+      }
+      
+      return p;
     }
 
     void release(void* ptr) {
       chunk* free = reinterpret_cast<chunk*>(ptr);
-      free->next = head;
-      head = free;
+      chunk* head = peek_chunk();
+      free->free_next = head->free_next;
+      head->free_next = free;
+      recycle_count++;
     }
 
     void clear() {
       delete block->prev;
       block->prev = NULL;
-      block->init();
-      head = block->chunks;
+      position = 0;
     }
 
   private:
+    chunk* read_chunk() {
+      chunk* p = peek_chunk();
+      if(++position == block->size)
+        enlarge();      
+      return p;
+    }
+    
+    chunk* peek_chunk() const {
+      return block->chunks + position;
+    }
+    
     void enlarge () {
+      position = 0;
       chunk_block* new_block = new chunk_block(block->size*2);
       new_block->prev = block;
-
       block = new_block;
-      head = block->chunks;
     }
 
   private:
     chunk_block* block;
-    chunk* head;
+    unsigned position;
+    unsigned recycle_count;
   };
 }
 

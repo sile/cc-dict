@@ -7,6 +7,7 @@ namespace dict {
   template<typename Key>
   class hash {
   public:
+    hash() {}
     unsigned operator()(const Key& key) const {
       return key.hash();
     }
@@ -15,6 +16,7 @@ namespace dict {
   template<>
   class hash<int> {
   public:
+    hash() {}
     unsigned operator()(int  key) const {
       return key * GOLDEN_RATIO_PRIME;
     }
@@ -23,6 +25,7 @@ namespace dict {
   template<>
   class hash<unsigned> {
   public:
+    hash() {}
     unsigned operator()(unsigned  key) const {
       return key * GOLDEN_RATIO_PRIME;
     }

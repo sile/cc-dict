@@ -184,6 +184,9 @@ namespace dict {
 
   template<class Key, class Value, class Hash, class Alloca>
   const float dict<Key,Value,Hash,Alloca>::DEFAULT_REHASH_THRESHOLD = 0.75;
+
+  template<class Key, class Value, class Hash, class Alloca>
+  const Hash dict<Key,Value,Hash,Alloca>::hash;
 }
 
 #endif
