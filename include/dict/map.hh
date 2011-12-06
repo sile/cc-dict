@@ -1,3 +1,10 @@
+/**
+ * @license cc-dict 0.0.1
+ * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
+ * MIT license
+ * https://github.com/sile/cc-dict/blob/master/COPYING
+ * Date: 2011-12-07
+ */
 #ifndef DICT_MAP_HH
 #define DICT_MAP_HH
 
@@ -9,7 +16,7 @@
 
 namespace dict {
   template<class Key, class Value, class Hash = dict::hash<Key> >
-  class map { // TODO: => map?
+  class map { 
   private:
     struct node {
       node* next;

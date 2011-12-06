@@ -1,17 +1,24 @@
+/**
+ * @license cc-dict 0.0.1
+ * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
+ * MIT license
+ * https://github.com/sile/cc-dict/blob/master/COPYING
+ * Date: 2011-12-07
+ */
 #ifndef DICT_ALLOCATOR_HH
 #define DICT_ALLOCATOR_HH
 
-#include <cstdlib>
+#include <cstddef>
 
 namespace dict {
-  template<unsigned CHUNK_SIZE>
+  template<unsigned ALLOCATE_SIZE>
   class fixed_size_allocator { 
   private:
-    static const unsigned INITIAL_SIZE=4;
+    static const unsigned INITIAL_BLOCK_SIZE=4;
 
     struct chunk {
       union {
-        char buf[CHUNK_SIZE];
+        char buf[ALLOCATE_SIZE];
         chunk* free_next;
       };
     };
@@ -32,8 +39,9 @@ namespace dict {
 
   public:
     fixed_size_allocator()
-      : position(0), recycle_count(0), init_block(INITIAL_SIZE), block(&init_block) {}
-
+      : init_block(INITIAL_BLOCK_SIZE), block(&init_block), 
+        position(0), recycle_count(0) {}
+      
     ~fixed_size_allocator() {
       if(block != &init_block)
         delete block;
@@ -43,11 +51,11 @@ namespace dict {
       chunk* p;
       
       if(recycle_count > 0) {
-        recycle_count--;
-        
         chunk* head = peek_chunk();
         p = head->free_next;
         head->free_next = p->free_next;
+
+        recycle_count--;
       } else {
         p = read_chunk();
       }
@@ -60,12 +68,13 @@ namespace dict {
       chunk* head = peek_chunk();
       free->free_next = head->free_next;
       head->free_next = free;
+      
       recycle_count++;
     }
 
     void clear() {
-      for(chunk_block* b=block->prev; b != &init_block; b = b->prev)
-        delete b;
+      for(chunk_block* prev=block->prev; prev != &init_block; prev=prev->prev)
+        delete prev;
       block->prev = NULL;
       position = 0;
     }
@@ -83,18 +92,17 @@ namespace dict {
     }
     
     void enlarge () {
-      position = 0;
       chunk_block* new_block = new chunk_block(block->size*2);
       new_block->prev = block;
       block = new_block;
+      position = 0;
     }
 
   private:
-    unsigned position;
-    unsigned recycle_count;
-
     chunk_block init_block;
     chunk_block* block;
+    unsigned position;
+    unsigned recycle_count;
   };
 }
 

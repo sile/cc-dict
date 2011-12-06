@@ -1,5 +1,5 @@
-#include <iostream>
 #include "dict/map.hh"
+#include <iostream>
 #include <cstdlib>
 
 #include <tr1/unordered_map>
