@@ -8,35 +8,35 @@
 #ifndef DICT_HASH_HH
 #define DICT_HASH_HH
 
+#include <string>
+
 namespace dict {
   const unsigned GOLDEN_RATIO_PRIME=(2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
 
-  template<typename Key>
-  class hash {
+  template<class Key>
+  class hash_functor {
   public:
-    hash() {}
+    hash_functor() {}
     unsigned operator()(const Key& key) const {
-      return key.hash();
+      return hash(key);
     }
   };
+  
+  unsigned hash(unsigned key) {
+    return key * GOLDEN_RATIO_PRIME;
+  }
 
-  template<>
-  class hash<int> {
-  public:
-    hash() {}
-    unsigned operator()(int  key) const {
-      return key * GOLDEN_RATIO_PRIME;
-    }
-  };
+  unsigned hash(int key) {
+    return key * GOLDEN_RATIO_PRIME;
+  }
+  
+  unsigned hash(const char* key) {
+    return 0; // TODO:
+  }
 
-  template<>
-  class hash<unsigned> {
-  public:
-    hash() {}
-    unsigned operator()(unsigned  key) const {
-      return key * GOLDEN_RATIO_PRIME;
-    }
-  };
+  unsigned hash(const std::string& key) {
+    return 0; // TODO:
+  }
 }
 
 #endif

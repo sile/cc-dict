@@ -15,7 +15,7 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class Hash = dict::hash<Key> >
+  template<class Key, class Value, class Hash = dict::hash_functor<Key> >
   class map { 
   private:
     struct node {
