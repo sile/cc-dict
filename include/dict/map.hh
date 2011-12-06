@@ -1,5 +1,5 @@
-#ifndef DICT_DICT_HH
-#define DICT_DICT_HH
+#ifndef DICT_MAP_HH
+#define DICT_MAP_HH
 
 #include "allocator.hh"
 #include "hash.hh"
@@ -9,7 +9,7 @@
 
 namespace dict {
   template<class Key, class Value, class Hash = dict::hash<Key> >
-  class dict { // TODO: => map?
+  class map { // TODO: => map?
   private:
     struct node {
       node* next;
@@ -26,7 +26,7 @@ namespace dict {
     };
     
   public:
-    dict(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
+    map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       buckets(NULL),
       bitlen(INITIAL_BITLEN),
       count(0),
@@ -36,7 +36,7 @@ namespace dict {
       init();
     }
 
-    ~dict() {
+    ~map() {
       if(buckets != reinterpret_cast<node**>(&init_nodes))
         delete buckets;
     }
@@ -180,13 +180,13 @@ namespace dict {
   };
 
   template<class Key, class Value, class Hash>
-  const typename dict<Key,Value,Hash>::node dict<Key,Value,Hash>::node::tail;
+  const typename map<Key,Value,Hash>::node map<Key,Value,Hash>::node::tail;
 
   template<class Key, class Value, class Hash>
-  const float dict<Key,Value,Hash>::DEFAULT_REHASH_THRESHOLD = 0.75;
+  const float map<Key,Value,Hash>::DEFAULT_REHASH_THRESHOLD = 0.75;
 
   template<class Key, class Value, class Hash>
-  const Hash dict<Key,Value,Hash>::hash;
+  const Hash map<Key,Value,Hash>::hash;
 }
 
 #endif

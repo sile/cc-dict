@@ -1,5 +1,5 @@
 #include <iostream>
-#include "dict/dict.hh"
+#include "dict/map.hh"
 #include <cstdlib>
 
 #include <tr1/unordered_map>
@@ -32,7 +32,7 @@ inline double gettime() {
 #endif
 
 void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
-  dict::dict<int,int> dic;
+  dict::map<int,int> dic;
   double beg_t = gettime();
   int count = 0;
 
@@ -77,7 +77,7 @@ void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
   unsigned count = 0;
 
   for(int i=0; i < DSIZE; i += N) {
-    dict::dict<int,int> dic;  
+    dict::map<int,int> dic;  
     
     for(int j=0; j < N; j++)
       dic[data1[i+j]] = data1[i+j];
