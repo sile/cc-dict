@@ -173,85 +173,88 @@ namespace dict {
     Cache<Chunk<T[32]> > x32;
   };
 
-  template<typename T, class Alloca = CachedAllocator<T> >
+  template<unsigned CHUNK_SIZE, class Alloca = CachedAllocator<char[CHUNK_SIZE]> >
   class fixed_size_allocator { 
   private:
-    union X {
-      T x;
-      struct link {
-        T* prev;
+    struct chunk {
+      union {
+        char buf[CHUNK_SIZE];
+        chunk* free_next;
       };
     };
-    //dict::dict::node<int,int> a;
-
-    struct Chunk {
-      T* buf;
+    
+    struct chunk_block {
+      chunk* chunks;
       unsigned size;
-      Chunk* prev;
-      Alloca& a;
+      chunk_block* prev;
+      Alloca& a; // XXX:
 
-      Chunk(unsigned size) : buf(NULL), size(size), prev(NULL), a(Alloca::instance()) {
-        buf = new (a.allocate(size)) T[size];
+      chunk_block(unsigned size) : chunks(NULL), size(size), prev(NULL), a(Alloca::instance()) {
+        chunks = new (a.allocate(size)) chunk[size];
       }
-
-      ~Chunk() {
-        a.free(buf);
+      
+      ~chunk_block() {
+        a.free(chunks);
         delete prev;
       }
     };
 
   public:
-    node_allocator(unsigned initial_size) :
-      chunk(NULL),
-      position(0),
-      recycle_count(0)
-    {
-      chunk = new Chunk(initial_size);
+    fixed_size_allocator(unsigned initial_size) : block(NULL), position(0), recycle_count(0) { 
+      block = new chunk_block(initial_size);
     }
 
-    ~node_allocator() {
-      delete chunk;
+    ~fixed_size_allocator() {
+      delete block;
     }
     
-    T* allocate() {
+    void* allocate() {
       if(recycle_count > 0) {
-        T* head = chunk->buf + position;
-        T* p = head->next;
-        head->next = p->next;
+        chunk* head = peek_chunk();
+        chunk* ptr = head->free_next;
+        head->free_next = ptr->free_next;
         recycle_count--;
-        return p;
+        return ptr;
       }
       
-      T* p = chunk->buf + position;
-      if(++position == chunk->size)
-        enlarge();
-      
-      return p;
+      return read_chunk();
     }
 
-    void release(T* ptr) {
-      T* head = chunk->buf + position;
-      ptr->next = head->next;
+    void release(void* ptr) {
+      chunk* free = reinterpret_cast<chunk*>(ptr);
+      chunk* head = peek_chunk();
+      free->free_next = head->free_next;
       recycle_count++;
-      head->next = ptr;
+      head->free_next = free;
     }
 
     void clear() {
-      delete chunk->prev;
-      chunk->prev = NULL;
+      delete block->prev;
+      block->prev = NULL;
       position = 0;
-    }
-    
-  private:
-    void enlarge () {
-      position = 0;
-      Chunk* new_chunk = new Chunk(chunk->size*2);
-      new_chunk->prev = chunk;
-      chunk = new_chunk;
     }
 
   private:
-    Chunk* chunk;
+    chunk* read_chunk() {
+      chunk* p = block->chunks + position;
+      if(++position == block->size)
+        enlarge();      
+      return p;
+    }
+    
+    chunk* peek_chunk() {
+      return block->chunks + position;
+    }
+    
+    void enlarge () {
+      position = 0;
+      chunk_block* new_block = new chunk_block(block->size*2);
+      new_block->prev = block;
+      block = new_block;
+    }
+
+  private:
+    chunk_block* block;
     unsigned position;
     unsigned recycle_count;
   };

@@ -173,7 +173,7 @@ namespace dict {
     const float rehash_threshold;
     unsigned rehash_border;
     
-    node_allocator<node> node_alloca;
+    fixed_size_allocator<sizeof(node)> node_alloca;
     Alloca& acc;
 
     static const Hash hash;
