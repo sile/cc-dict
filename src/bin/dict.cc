@@ -44,14 +44,14 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   beg_t = gettime();
   count = 0;
   for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data1[i]) != dic.end())
+    if(dic.find(data1[i]))
       count++;
   }
   std::cout << " get1: " << gettime()-beg_t << " #" << count << std::endl;
   
   count = 0;
   for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data2[i]) != dic.end())
+    if(dic.find(data2[i]))
       count++;
   }
   std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;
@@ -66,7 +66,7 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   beg_t = gettime();
   count = 0;
   for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data2[i]) != dic.end())
+    if(dic.find(data2[i]))
       count++;
   }
   std::cout << " get3: " << gettime()-beg_t << " #" << count << std::endl;
@@ -82,10 +82,10 @@ void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
     for(int j=0; j < N; j++)
       dic[data1[i+j]] = data1[i+j];
     for(int j=0; j < N; j++)
-      if(dic.find(data1[i+j]) != dic.end())
+      if(dic.find(data1[i+j]))
         count++;
     for(int j=0; j < N; j++)
-      if(dic.find(data2[i+j]) != dic.end())
+      if(dic.find(data2[i+j]))
         count++;
   }
 

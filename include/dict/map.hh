@@ -8,9 +8,8 @@
 #ifndef DICT_MAP_HH
 #define DICT_MAP_HH
 
-#include "allocator.hh"
 #include "hash.hh"
-
+#include "allocator.hh"
 #include <cstddef>
 #include <algorithm>
 
@@ -24,62 +23,62 @@ namespace dict {
       Key key;
       Value value;
       
-      node() : next(this), hashcode(MAX_HASHCODE) {}
+      node() 
+        : next(this), hashcode(MAX_HASHCODE) {}
 
-      node(const Key& key, const Value& value, node* next, unsigned hashcode) 
-        : next(next), hashcode(hashcode), key(key), value(value) {}
+      node(const Key& key, node* next, unsigned hashcode) 
+        : next(next), hashcode(hashcode), key(key) {}
     
       static const node tail;
     };
+
+  private:
+    static const float DEFAULT_REHASH_THRESHOLD;
+    static const unsigned MAX_HASHCODE = static_cast<unsigned>(-1);
+    static const unsigned ORDINAL_NODE_HASHCODE_MASK = MAX_HASHCODE>>1;
+    static const unsigned INITIAL_TABLE_SIZE = 8;
     
   public:
     map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
-      buckets(NULL),
-      bitlen(INITIAL_BITLEN),
-      count(0),
-      rehash_threshold(rehash_threshold),
-      node_alloca()
+      table(NULL),
+      table_size(INITIAL_TABLE_SIZE),
+      element_count(0),
+      rehash_threshold(rehash_threshold)
     {
       init();
     }
-
+    
     ~map() {
-      if(buckets != reinterpret_cast<node**>(&init_nodes))
-        delete buckets;
+      if(table != reinterpret_cast<node**>(&init_table))
+        delete table;
     }
-
+    
     Value* find(const Key& key) const {
       node** place;
-      return find_node(key,place) ? &(*place)->value : const_cast<Value*>(end());
+      return find_node(key,place) ? &(*place)->value : reinterpret_cast<Value*>(NULL);
     }
-
-    unsigned size() const { return count; }
-
+    
     Value& operator[](const Key& key) {
       unsigned hashcode;
       node** place;
-
+      
       if(find_node(key, place, hashcode))
         return (*place)->value;
       
-      *place = new (node_alloca.allocate()) node(key,Value(),*place,hashcode);
+      *place = new (node_alloca.allocate()) node(key,*place,hashcode);
       Value& value = (*place)->value;
-      if(++count >= rehash_border)
+      if(++element_count >= rehash_border)
         enlarge();
-
+      
       return value;
     }
-
-    static const Value* end() {
-      return reinterpret_cast<const Value*>(&node::tail);
-    }
-
+  
     unsigned erase(const Key& key) {
       node** place;
       if(find_node(key,place)) {
         node* del = *place;
         *place = del->next;
-        --count;
+        --element_count;
         node_alloca.release(del);
         return 1;
       } else {
@@ -88,46 +87,46 @@ namespace dict {
     }
     
     void clear() {
-      count = 0;
-      std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
+      element_count = 0;
+      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       node_alloca.clear();
     }
 
     template<class callback>
     void each(const callback& fn) const {
-      for(unsigned i=0; i < bucket_size; i++)
-        for(node* cur=buckets[i]; cur != &node::tail; cur = cur->next)
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
           fn(cur->key, cur->value);
     }
 
     template<class callback>
     void each(callback& fn) const {
-      for(unsigned i=0; i < bucket_size; i++)
-        for(node* cur=buckets[i]; cur != &node::tail; cur = cur->next)
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
           fn(cur->key, cur->value);      
     }
 
+    unsigned size() const { return element_count; }
+
   private:
     void init() {
-      bucket_size = 1 << bitlen;
-      bitmask = bucket_size-1;
-      buckets = buckets==NULL ? reinterpret_cast<node**>(&init_nodes) : new node* [bucket_size];
-      std::fill(buckets, buckets+bucket_size, const_cast<node*>(&node::tail));
-      rehash_border = bucket_size * rehash_threshold;
+      table = table==NULL ? reinterpret_cast<node**>(&init_table) : new node* [table_size];
+      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
+      rehash_border = table_size * rehash_threshold;
     }
 
     void enlarge() {
-      const unsigned old_bucket_size = bucket_size;
-      node** old_buckets = buckets;
+      const unsigned old_table_size = table_size;
+      node** old_table = table;
 
-      bitlen++;
+      table_size <<= 1;
       init();
 
-      for(unsigned i=0; i < old_bucket_size; i++)
-        for(node* cur=old_buckets[i]; cur != &node::tail; cur = rehash_node(cur));
+      for(unsigned i=0; i < old_table_size; i++)
+        for(node* cur=old_table[i]; cur != &node::tail; cur = rehash_node(cur));
 
-      if(old_buckets != reinterpret_cast<node**>(&init_nodes))
-        delete old_buckets;
+      if(old_table != reinterpret_cast<node**>(&init_table))
+        delete old_table;
     }
     
     node* rehash_node(node* cur) {
@@ -157,31 +156,20 @@ namespace dict {
     }
 
     void find_candidate(const unsigned hashcode, node**& place) const {
-      const unsigned index = hashcode & bitmask;
-      for(node* node=*(place=&buckets[index]); node->hashcode < hashcode; node=*(place=&node->next));
+      const unsigned index = hashcode & (table_size-1);
+      for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
     }
 
-  public:
-    static const float DEFAULT_REHASH_THRESHOLD;
+  private:
+    fixed_size_allocator<sizeof(node)> node_alloca;
     
-  private:
-    static const unsigned MAX_HASHCODE = static_cast<unsigned>(-1);
-    static const unsigned ORDINAL_NODE_HASHCODE_MASK = MAX_HASHCODE>>1;
-    static const unsigned INITIAL_BITLEN = 3;
-
-  private:
-    node** buckets;
-    unsigned bitlen;
-    unsigned bucket_size; // => buckets_size
-    unsigned bitmask;
-    unsigned count;
+    node* init_table[INITIAL_TABLE_SIZE];
+    node** table;
+    unsigned table_size;
+    unsigned element_count;
     
     const float rehash_threshold;
     unsigned rehash_border;
-    
-    fixed_size_allocator<sizeof(node)> node_alloca;
-
-    node* init_nodes[1 << INITIAL_BITLEN];
     
     static const Hash hash;
   };
