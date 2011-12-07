@@ -3,7 +3,6 @@
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
- * Date: 2011-12-07
  */
 #ifndef DICT_MAP_HH
 #define DICT_MAP_HH
