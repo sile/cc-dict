@@ -14,7 +14,7 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class Hash = dict::hash_functor<Key> >
+  template<class Key, class Value, class Hash = dict::hash_functor<Key>, class Allocator=array_allocator<void*> >
   class map { 
   private:
     struct node {
@@ -49,8 +49,7 @@ namespace dict {
     }
     
     ~map() {
-      if(table != reinterpret_cast<node**>(&init_table))
-        delete table;
+      Allocator::release(table, table_size);
     }
     
     Value* find(const Key& key) const {
@@ -110,7 +109,7 @@ namespace dict {
 
   private:
     void init() {
-      table = table==NULL ? reinterpret_cast<node**>(&init_table) : new node* [table_size];
+      table = new (Allocator::allocate(table_size)) node*[table_size];
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       rehash_border = table_size * rehash_threshold;
     }
@@ -125,8 +124,7 @@ namespace dict {
       for(unsigned i=0; i < old_table_size; i++)
         for(node* cur=old_table[i]; cur != &node::tail; cur = rehash_node(cur));
 
-      if(old_table != reinterpret_cast<node**>(&init_table))
-        delete old_table;
+      Allocator::release(old_table, old_table_size);
     }
     
     node* rehash_node(node* cur) {
@@ -163,7 +161,6 @@ namespace dict {
   private:
     fixed_size_allocator<sizeof(node)> node_alloca;
     
-    node* init_table[INITIAL_TABLE_SIZE];
     node** table;
     unsigned table_size;
     unsigned element_count;
@@ -174,14 +171,14 @@ namespace dict {
     static const Hash hash;
   };
 
-  template<class Key, class Value, class Hash>
-  const typename map<Key,Value,Hash>::node map<Key,Value,Hash>::node::tail;
+  template<class Key, class Value, class Hash, class Allocator>
+  const typename map<Key,Value,Hash,Allocator>::node map<Key,Value,Hash,Allocator>::node::tail;
 
-  template<class Key, class Value, class Hash>
-  const float map<Key,Value,Hash>::DEFAULT_REHASH_THRESHOLD = 0.75;
+  template<class Key, class Value, class Hash, class Allocator>
+  const float map<Key,Value,Hash,Allocator>::DEFAULT_REHASH_THRESHOLD = 0.75;
 
-  template<class Key, class Value, class Hash>
-  const Hash map<Key,Value,Hash>::hash;
+  template<class Key, class Value, class Hash, class Allocator>
+  const Hash map<Key,Value,Hash,Allocator>::hash;
 }
 
 #endif
