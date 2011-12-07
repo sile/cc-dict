@@ -39,12 +39,13 @@ namespace dict {
 
   public:
     fixed_size_allocator()
-      : init_block(INITIAL_BLOCK_SIZE), block(&init_block), 
-        position(0), recycle_count(0) {}
+      : block(NULL), position(0), recycle_count(0) {
+      block = new chunk_block(INITIAL_BLOCK_SIZE);
+    }
       
     ~fixed_size_allocator() {
-      if(block != &init_block)
-        delete block;
+      clear();
+      delete block;
     }
     
     void* allocate() {
@@ -73,8 +74,11 @@ namespace dict {
     }
 
     void clear() {
-      for(chunk_block* prev=block->prev; prev != &init_block; prev=prev->prev)
-        delete prev;
+      for(chunk_block* prev=block->prev; prev != NULL;) {
+        chunk_block* tmp = prev;
+        prev = prev->prev;
+        delete tmp;
+      }
       block->prev = NULL;
       position = 0;
     }
@@ -99,7 +103,6 @@ namespace dict {
     }
 
   private:
-    chunk_block init_block;
     chunk_block* block;
     unsigned position;
     unsigned recycle_count;

@@ -39,7 +39,7 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   for(int i=0; i < DSIZE; i++) {
     dic[data1[i]] = data1[i];
   }
-  std::cout << " put: " << gettime()-beg_t << " #" << dic.size() << std::endl;
+  std::cout << " put:" << gettime()-beg_t << " #" << dic.size() << std::endl;
 
   beg_t = gettime();
   count = 0;
@@ -160,7 +160,6 @@ int main(int argc, char** argv) {
     data1[i] = rand() % (DSIZE*5);
     data2[i] = rand() % (DSIZE*5);
   }
-  
 
   double beg_t = gettime();
   std::cout << "dict: large" << std::endl;
