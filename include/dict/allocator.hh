@@ -25,17 +25,15 @@ namespace dict {
       cache* next;
       char chunk[1];
 
-      cache() : next(this) {}
-
-      bool empty() const { return this == next; }
-      
-      void append(cache* node) {
-        node->next = next;
-        next = node;
+      void push(cache* p) {
+        p->next = next;
+        next = p;
       }
       
-      void unlink_next() {
+      cache* pop() {
+        cache* tmp = next;
         next = next->next;
+        return tmp;
       } 
 
       static cache* allocate(unsigned size) {
@@ -51,21 +49,17 @@ namespace dict {
 
       cache* pop() {
         free_count--;
-        
-        cache* p = free->next;
-        free->unlink_next();
-        return p;
+        return free->pop();
       }
 
-      void push(unsigned size) {
+      void push_new(unsigned size) {
         count++;
-        free_count++;
-        free->append(cache::allocate(size));
+        push(cache::allocate(size));
       }
 
       void push(cache* p) {
         free_count++;
-        free->append(p);
+        free->push(p);
       }
 
       bool empty() const {
@@ -73,7 +67,7 @@ namespace dict {
       }
 
       bool oversupply() const {
-        return free_count > ((count+4)*3/4);
+        return free_count > 8 && free_count > count*3/4;
       }
 
       void adjust() {
@@ -87,7 +81,7 @@ namespace dict {
 
   public:
     void init() {
-      for(unsigned i=0; i < CACHE_COUNT; i++) {
+      for(unsigned i=0; i < CACHE_HEAD_COUNT; i++) {
         caches[i].free = new cache;
         caches[i].count = 0;
         caches[i].free_count = 0;
@@ -99,12 +93,12 @@ namespace dict {
         cache_head& head = caches[size/CHUNK_UNIT];
         if(head.empty()) {
           unsigned adj_size = (size + (CHUNK_UNIT-1)) & ~(CHUNK_UNIT-1);
-          head.push(adj_size);
+          head.push_new(adj_size);
         }
         return head.pop()->chunk;
-      } 
-      
-      return std::malloc(size);
+      } else {
+        return std::malloc(size);
+      }
     }
     
     void release(void* ptr, unsigned size) {
@@ -114,32 +108,31 @@ namespace dict {
         head.push(c);
         if(head.oversupply())
           head.adjust();
-        return;
+      } else {
+        std::free(ptr);
       }
-      std::free(ptr);
     }
 
   private:
     static const unsigned CHUNK_UNIT=32;
     static const unsigned CACHED_CHUNK_SIZE_LIMIT=1024;
-    static const unsigned CACHE_COUNT=CACHED_CHUNK_SIZE_LIMIT/CHUNK_UNIT;
+    static const unsigned CACHE_HEAD_COUNT=CACHED_CHUNK_SIZE_LIMIT/CHUNK_UNIT;
     
-    cache_head caches[CACHE_COUNT];
+    cache_head caches[CACHE_HEAD_COUNT];
   };
 
-  // XXX:
   namespace {
-    thread_local bool initialized = false;
     thread_local cached_allocator g_cached_alloca;
+    thread_local bool g_cached_alloca_initialized = false;
   }
 
   template <class T>
   class array_allocator {
   public:
     static void* allocate(unsigned count) {
-      if(initialized==false) {
+      if(g_cached_alloca_initialized==false) {
         g_cached_alloca.init();
-        initialized = true;
+        g_cached_alloca_initialized = true;
       }
       return g_cached_alloca.allocate(sizeof(T)*count);
     }
@@ -148,7 +141,10 @@ namespace dict {
     }    
   };
 
-#else
+#undef dict__offsetof
+#undef dict__obj_ptr
+
+#else // #ifdef TLS_ENABLED
   
   template <class T>
   class array_allocator {
@@ -161,7 +157,7 @@ namespace dict {
     }    
   };
   
-#endif
+#endif // #ifdef TLS_ENABLED
 
   template<unsigned CHUNK_SIZE, class ChunkAllocator=array_allocator<char[CHUNK_SIZE]> >
   class fixed_size_allocator { 
