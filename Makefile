@@ -1,7 +1,6 @@
 CXX=g++
 CXX_FLAGS=-O2 -Wall -ansi -pedantic-errors -I include
 CXX_OPTS=
-# CXX_OPTS=-DTLS_ENABLED -Dthread_local=__thread
 
 all: bin bin/dict
 

@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.1
+ * @license cc-dict 0.0.2
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -13,7 +13,7 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class Hash = dict::hash_functor<Key>, class Allocator=array_allocator<void*> >
+  template<class Key, class Value, class Hash=dict::hash_functor<Key>, class Eql=dict::eql_functor<Key>, class Allocator=array_allocator<void*> >
   class map { 
   private:
     struct node {
@@ -147,7 +147,7 @@ namespace dict {
       find_candidate(hashcode, place);
 
       for(node* node=*place; hashcode==node->hashcode; node=*(place=&node->next))
-        if(key == node->key)
+        if(eql(key,node->key))
           return true;
       return false;
     }
@@ -168,16 +168,14 @@ namespace dict {
     unsigned rehash_border;
     
     static const Hash hash;
+    static const Eql eql;
   };
 
-  template<class Key, class Value, class Hash, class Allocator>
-  const typename map<Key,Value,Hash,Allocator>::node map<Key,Value,Hash,Allocator>::node::tail;
+  template<class Key, class Value, class Hash, class Eql, class Allocator>
+  const typename map<Key,Value,Hash,Eql,Allocator>::node map<Key,Value,Hash,Eql,Allocator>::node::tail;
 
-  template<class Key, class Value, class Hash, class Allocator>
-  const float map<Key,Value,Hash,Allocator>::DEFAULT_REHASH_THRESHOLD = 0.75;
-
-  template<class Key, class Value, class Hash, class Allocator>
-  const Hash map<Key,Value,Hash,Allocator>::hash;
+  template<class Key, class Value, class Hash, class Eql, class Allocator>
+  const float map<Key,Value,Hash,Eql,Allocator>::DEFAULT_REHASH_THRESHOLD = 0.75;
 }
 
 #endif
