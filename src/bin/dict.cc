@@ -10,26 +10,12 @@ using namespace tr1;
 #define DSIZE 1000000
 #define N 10
 
-/**
- * clock function
- */
-#ifdef __unix__
-
 #include <sys/time.h>
 inline double gettime(){
   timeval tv;
   gettimeofday(&tv,NULL);
   return static_cast<double>(tv.tv_sec)+static_cast<double>(tv.tv_usec)/1000000.0;
 }
-
-#else
-
-#include <ctime>
-inline double gettime() {
-  return static_cast<double>(clock())/CLOCKS_PER_SEC;
-}
-
-#endif
 
 void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
   dict::map<int,int> dic;

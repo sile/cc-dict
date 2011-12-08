@@ -56,7 +56,7 @@ namespace dict {
       node** place;
       return find_node(key,place) ? &(*place)->value : reinterpret_cast<Value*>(NULL);
     }
-    
+
     Value& operator[](const Key& key) {
       unsigned hashcode;
       node** place;
@@ -72,16 +72,16 @@ namespace dict {
       return value;
     }
   
-    unsigned erase(const Key& key) {
+    bool erase(const Key& key) {
       node** place;
       if(find_node(key,place)) {
         node* del = *place;
         *place = del->next;
         --element_count;
         node_alloca.release(del);
-        return 1;
+        return true;
       } else {
-        return 0;
+        return false;
       }
     }
     
@@ -91,15 +91,15 @@ namespace dict {
       node_alloca.clear();
     }
 
-    template<class callback>
-    void each(const callback& fn) const {
+    template<class Callback>
+    void each(const Callback& fn) const {
       for(unsigned i=0; i < table_size; i++)
         for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
           fn(cur->key, cur->value);
     }
 
-    template<class callback>
-    void each(callback& fn) const {
+    template<class Callback>
+    void each(Callback& fn) const {
       for(unsigned i=0; i < table_size; i++)
         for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
           fn(cur->key, cur->value);      
