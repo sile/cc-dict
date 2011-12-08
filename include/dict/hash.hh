@@ -8,11 +8,9 @@
 #define DICT_HASH_HH
 
 #include <string>
-#include <cstring>
-#include <iostream>
+
 namespace dict {
   const unsigned GOLDEN_RATIO_PRIME=(2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
-  const unsigned ui_size_minus8 = sizeof(unsigned)*8 - 8;
 
   template<class Key>
   class hash_functor {
@@ -30,7 +28,8 @@ namespace dict {
     return key * GOLDEN_RATIO_PRIME;
   }
 
-  unsigned hash(long key) {
+  unsigned hash(long key) { 
+    // XXX: if sizeof(long) > sizeof(unsigned), the calculation will lose high bits information of key.
     return key * GOLDEN_RATIO_PRIME;
   }
 
@@ -43,25 +42,6 @@ namespace dict {
 
   unsigned hash(const std::string& key) {
     return hash(key.c_str());
-  }
-
-  // XXX:
-  template<class Key>
-  class eql_functor {
-  public:
-    bool operator()(const Key& k1, const Key& k2) const {
-      return eql(k1,k2);
-    }
-  };
-
-  template<class T>
-  bool eql(T k1, T k2) {
-    return k1 == k2;
-  }
-  
-  template<>
-  bool eql(const char* k1, const char* k2) {
-    return std::strcmp(k1,k2)==0;
   }
 }
 

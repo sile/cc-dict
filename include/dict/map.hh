@@ -8,6 +8,7 @@
 #define DICT_MAP_HH
 
 #include "hash.hh"
+#include "eql.hh"
 #include "allocator.hh"
 #include <cstddef>
 #include <algorithm>
