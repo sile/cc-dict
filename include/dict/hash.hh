@@ -34,14 +34,14 @@ namespace dict {
   }
 
   unsigned hash(const char* key) {
-    unsigned h = GOLDEN_RATIO_PRIME;
-    for(const char* c=key; *c != 0; c++)
-      h = (h*33) + *c;
-    return h;
+    return hash(reinterpret_cast<long>(key));
   }
 
   unsigned hash(const std::string& key) {
-    return hash(key.c_str());
+    unsigned h = GOLDEN_RATIO_PRIME;
+    for(const char* c=key.c_str(); *c != 0; c++)
+      h = (h*33) + *c;
+    return h;
   }
 }
 
