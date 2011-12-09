@@ -8,7 +8,7 @@
 
 
 [バージョン]
-・0.0.2
+・0.0.3
 
 
 [API]
@@ -21,10 +21,9 @@
 　　 - Value: 要素の値の型
 　　 - Hash: Keyに適用するハッシュ関数(ファンクタ)。デフォルトはdict:hashクラス。
 　　 - Eql: 二つのKeyの等値性を判定する関数(ファンクタ)。デフォルトはdict:eqlクラス。
-　　 - Allocator: テーブル用のメモリ領域を割り当てるためのアロケータ。基本的にはデフォルトのものをそのまま使用する。
 
 --
-tempalte<Key, Value, Hash, Eql, Allocator>
+tempalte<Key, Value, Hash, Eql>
 class map {
 public:
   map(rehash_threshold=0.75);
@@ -37,5 +36,3 @@ public:
   template<class Callback>  // 要素を走査し、それぞれに対して fn(Key,Value) を呼び出す。
   void each(const Callback& fn) const; 
 };
-
-[参照]

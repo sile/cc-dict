@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.2
+ * @license cc-dict 0.0.3
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -14,7 +14,7 @@
 #include <algorithm>
 
 namespace dict {
-  template<class Key, class Value, class Hash=dict::hash_functor<Key>, class Eql=dict::eql_functor<Key>, class Allocator=array_allocator<void*> >
+  template<class Key, class Value, class Hash=dict::hash_functor<Key>, class Eql=dict::eql_functor<Key> >
   class map { 
   private:
     struct node {
@@ -49,7 +49,7 @@ namespace dict {
     }
     
     ~map() {
-      Allocator::release(table, table_size);
+      delete [] table;
     }
     
     Value* find(const Key& key) const {
@@ -109,7 +109,7 @@ namespace dict {
 
   private:
     void init() {
-      table = new (Allocator::allocate(table_size)) node*[table_size];
+      table = new node*[table_size];
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       rehash_border = table_size * rehash_threshold;
     }
@@ -124,7 +124,7 @@ namespace dict {
       for(unsigned i=0; i < old_table_size; i++)
         for(node* cur=old_table[i]; cur != &node::tail; cur = rehash_node(cur));
 
-      Allocator::release(old_table, old_table_size);
+      delete [] old_table;
     }
     
     node* rehash_node(node* cur) {
@@ -172,11 +172,11 @@ namespace dict {
     static const Eql eql;
   };
 
-  template<class Key, class Value, class Hash, class Eql, class Allocator>
-  const typename map<Key,Value,Hash,Eql,Allocator>::node map<Key,Value,Hash,Eql,Allocator>::node::tail;
+  template<class Key, class Value, class Hash, class Eql>
+  const typename map<Key,Value,Hash,Eql>::node map<Key,Value,Hash,Eql>::node::tail;
 
-  template<class Key, class Value, class Hash, class Eql, class Allocator>
-  const float map<Key,Value,Hash,Eql,Allocator>::DEFAULT_REHASH_THRESHOLD = 0.75;
+  template<class Key, class Value, class Hash, class Eql>
+  const float map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.75;
 }
 
 #endif

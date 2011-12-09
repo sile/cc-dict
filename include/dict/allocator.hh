@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.2
+ * @license cc-dict 0.0.3
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -10,18 +10,7 @@
 #include <cstdlib>
 
 namespace dict {
-  template <class T>
-  class array_allocator {
-  public:
-    static void* allocate(unsigned count) {
-      return std::malloc(sizeof(T)*count);
-    }
-    static void release(void* ptr, unsigned size) {
-      std::free(ptr);
-    }    
-  };
-
-  template<unsigned CHUNK_SIZE, class ChunkAllocator=array_allocator<char[CHUNK_SIZE]> >
+  template<unsigned CHUNK_SIZE>
   class fixed_size_allocator { 
   private:
     static const unsigned INITIAL_BLOCK_SIZE=8;
@@ -39,11 +28,11 @@ namespace dict {
       chunk_block* prev;
       
       chunk_block(unsigned size) : chunks(NULL), size(size), prev(NULL) {
-        chunks = new (ChunkAllocator::allocate(size)) chunk[size];
+        chunks = new chunk[size];
       }
       
       ~chunk_block() {
-        ChunkAllocator::release(chunks, size);
+        delete [] chunks;
         delete prev;
       }
     };
