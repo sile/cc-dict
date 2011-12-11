@@ -23,11 +23,8 @@ namespace dict {
       Key key;
       Value value;
       
-      node() 
-        : next(this), hashcode(MAX_HASHCODE) {}
-
-      node(const Key& key, node* next, unsigned hashcode) 
-        : next(next), hashcode(hashcode), key(key) {}
+      node() : next(this), hashcode(MAX_HASHCODE) {}
+      node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
     
       static const node tail;
     };
@@ -89,13 +86,6 @@ namespace dict {
       element_count = 0;
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       node_alloca.clear();
-    }
-
-    template<class Callback>
-    void each(const Callback& fn) const {
-      for(unsigned i=0; i < table_size; i++)
-        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
-          fn(cur->key, cur->value);
     }
 
     template<class Callback>

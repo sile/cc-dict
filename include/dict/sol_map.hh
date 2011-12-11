@@ -31,31 +31,29 @@ namespace dict {
   class sol_map {
   private:
    struct node {
-      node* next;
-      unsigned hashcode;
-      Key key;
-      Value value;
-      
-      node() 
-        : next(this), hashcode(MAX_HASHCODE) {}
-
-      node(const Key& key, node* next, unsigned hashcode) 
-        : next(next), hashcode(hashcode), key(key) {}
-    
-      static const node tail;
-    };
+     node* next;
+     unsigned hashcode;
+     Key key;
+     Value value;
+     
+     node() : next(this), hashcode(MAX_HASHCODE) {}
+     node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
+     
+     static const node tail;
+   };
     
   private:
+    static const float DEFAULT_REHASH_THRESHOLD;
     static const unsigned MAX_HASHCODE = 0xFFFFFFFF;
     static const unsigned ORDINAL_NODE_HASHCODE_MASK = (MAX_HASHCODE<<1) & MAX_HASHCODE;
     static const unsigned INITIAL_TABLE_SIZE = 8;
 
   public:
-    sol_map() :
+    sol_map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       table(NULL),
       table_size(INITIAL_TABLE_SIZE),
       rehash_border(0),
-      rehash_threshold(0.90),
+      rehash_threshold(rehash_threshold),
       element_count(0)
     {
       table = reinterpret_cast<node**>(std::malloc(sizeof(node*)*table_size));
@@ -87,6 +85,33 @@ namespace dict {
 
       return (*place)->value;
     }
+    
+    bool erase(const Key& key) {
+      node** place;
+      if(find_node(key,place)) {
+        node* del = *place;
+        *place = del->next;
+        --element_count;
+        node_alloca.release(del);
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    void clear() {
+      element_count = 0;
+      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
+      node_alloca.clear();
+    }
+
+    template<class Callback>
+    void each(Callback& fn) const {
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
+          fn(cur->key, cur->value);      
+    }
+
     unsigned size() const { return element_count; }
 
   private:
@@ -94,10 +119,17 @@ namespace dict {
       const unsigned new_table_size = table_size<<1;
       
       table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*new_table_size));
-      
-      // XXX:
-      node* buf = (node*)node_alloca.allocate_block(element_count); // XXX:
-      
+      sort_nodes();
+
+      for(unsigned i=0; i < table_size; i++)
+        rehash_node(table[i], i);
+
+      table_size = new_table_size;
+      rehash_border = table_size * rehash_threshold;
+    }
+    
+    void sort_nodes() {
+      node* buf = (node*)node_alloca.allocate_block(element_count); 
       for(unsigned i=0; i < table_size; i++) {
         if(table[i]==&node::tail)
           continue;
@@ -111,12 +143,6 @@ namespace dict {
         }
       }
       node_alloca.release_old_blocks(); 
-
-      for(unsigned i=0; i < table_size; i++)
-        rehash_node(table[i], i);
-
-      table_size = new_table_size;
-      rehash_border = table_size * rehash_threshold;
     }
     
     void rehash_node(node* head, unsigned parent_index) {
@@ -165,6 +191,9 @@ namespace dict {
 
   template<class Key, class Value, class Hash, class Eql>
   const typename sol_map<Key,Value,Hash,Eql>::node sol_map<Key,Value,Hash,Eql>::node::tail;
+
+  template<class Key, class Value, class Hash, class Eql>
+  const float sol_map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.90;
 }
 
 #endif
