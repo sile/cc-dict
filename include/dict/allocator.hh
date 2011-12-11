@@ -65,7 +65,7 @@ namespace dict {
     }
 
     void* allocate_block(unsigned count) {
-      chunk_block* new_block = new chunk_block(count*1.25);
+      chunk_block* new_block = new chunk_block(count*2);
       new_block->prev = block;
       block = new_block;
       position = count;

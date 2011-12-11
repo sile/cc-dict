@@ -126,7 +126,7 @@ namespace dict {
       const unsigned new_table_size = table_size<<1;
       
       table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*new_table_size));
-      // sort_nodes();
+      // sort_nodes(); TODO: フラグで制御
 
       for(unsigned i=0; i < table_size; i++)
         rehash_node(table[i], i);
@@ -136,7 +136,6 @@ namespace dict {
       rehash_border = table_size * rehash_threshold;
     }
     
-    /* 
     // ソートする効果はあまりない？
     void sort_nodes() {
       node* buf = (node*)node_alloca.allocate_block(element_count); 
@@ -155,7 +154,6 @@ namespace dict {
       
       node_alloca.release_old_blocks(); 
     }
-    */
     
     void rehash_node(node* head, unsigned parent_index) {
       // 有効な最上位ビットを1にする => 子のインデックス
@@ -210,7 +208,7 @@ namespace dict {
   const typename sol_map<Key,Value,Hash,Eql>::node sol_map<Key,Value,Hash,Eql>::node::tail;
 
   template<class Key, class Value, class Hash, class Eql>
-  const float sol_map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.5;
+  const float sol_map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.75;
 }
 
 #endif
