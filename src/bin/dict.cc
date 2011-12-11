@@ -1,6 +1,9 @@
+#include <iostream> // XXX:
+#include <cassert>
+
 #include "dict/map.hh"
 #include "dict/sol_map.hh"
-#include <iostream>
+
 #include <cstdlib>
 
 #include <tr1/unordered_map>
@@ -19,12 +22,13 @@ inline double gettime(){
 }
 
 void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
-  dict::map<int,int> dic;
+  dict::sol_map<int,int> dic;
   double beg_t = gettime();
   int count = 0;
 
   for(int i=0; i < DSIZE; i++) {
     dic[data1[i]] = data1[i];
+    assert(dic.find(data1[i]));
   }
   std::cout << " put:" << gettime()-beg_t << " #" << dic.size() << std::endl;
 
@@ -42,7 +46,7 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
       count++;
   }
   std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;
-
+  /*
   beg_t = gettime();
   count = 0;
   for(int i=0; i < DSIZE; i++) {
@@ -57,6 +61,7 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
       count++;
   }
   std::cout << " get3: " << gettime()-beg_t << " #" << count << std::endl;
+  */
 }
 
 void dict_bench_small(int data1[DSIZE], int data2[DSIZE]) {
@@ -168,9 +173,5 @@ int main(int argc, char** argv) {
   dict_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
-  dict::sol_map<int,int> sm;
-  sm.size();
-  sm[10] = 20;
-  std::cout << "@ " << sm[10] << ", " << sm[0] << std::endl;
   return 0;
 }

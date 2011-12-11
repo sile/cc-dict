@@ -79,10 +79,8 @@ namespace dict {
       
       *place = new (node_alloca.allocate()) node(key,*place,hashcode);
       Value& value = (*place)->value;
-      /*
       if(++element_count >= rehash_border)
         enlarge();
-      */
       
       return value;
     }
@@ -90,9 +88,34 @@ namespace dict {
 
   private:
     void init() {
-      table = new node*[table_size];
+      table = new node*[table_size]; // TODO: recalloc(?) を使ってみる？
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       rehash_border = table_size * rehash_threshold;
+    }
+
+    void enlarge() {
+      std::cout << "IN: " << table_size << std::endl;
+
+      const unsigned old_table_size = table_size;
+      node** old_table = table;
+
+      table_size <<= 1;
+      init();
+
+      for(unsigned i=0; i < old_table_size; i++)
+        rehash_node(old_table[i], i, old_table_size);
+
+      delete [] old_table;
+    }
+    
+    void rehash_node(node* head, unsigned old_index, unsigned old_table_size) {
+      // TODO: 整理
+      unsigned child = old_index | old_table_size; // TODO: comment (新しい最上位ビットを1にする)
+      unsigned hashcode = bit_reverse(child);
+      node** place;
+      find_candidate(hashcode, place);
+      table[child] = *place;
+      *place = const_cast<node*>(&node::tail);
     }
 
     bool find_node(const Key& key, node**& place) const {
