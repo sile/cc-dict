@@ -51,7 +51,77 @@ namespace dict {
     static const unsigned INITIAL_TABLE_SIZE = 8;
 
   public:
-    unsigned size() { return 0; }
+    sol_map() :
+      table(NULL),
+      table_size(INITIAL_TABLE_SIZE),
+      rehash_border(0),
+      rehash_threshold(0.75),
+      element_count(0)
+    {
+      init();
+    }
+
+    ~sol_map() {
+      delete [] table;
+    }
+
+    Value* find(const Key& key) const {
+      node** place;
+      return find_node(key,place) ? &(*place)->value : reinterpret_cast<Value*>(NULL);
+    }
+
+    Value& operator[](const Key& key) {
+      unsigned hashcode;
+      node** place;
+      
+      if(find_node(key, place, hashcode))
+        return (*place)->value;
+      
+      *place = new (node_alloca.allocate()) node(key,*place,hashcode);
+      Value& value = (*place)->value;
+      /*
+      if(++element_count >= rehash_border)
+        enlarge();
+      */
+      
+      return value;
+    }
+    unsigned size() const { return element_count; }
+
+  private:
+    void init() {
+      table = new node*[table_size];
+      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
+      rehash_border = table_size * rehash_threshold;
+    }
+
+    bool find_node(const Key& key, node**& place) const {
+      unsigned hashcode;
+      return find_node(key, place, hashcode);
+    }
+    
+    bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
+      hashcode = hash(key) & ORDINAL_NODE_HASHCODE_MASK;
+      find_candidate(hashcode, place);
+
+      for(node* node=*place; hashcode==node->hashcode; node=*(place=&node->next))
+        if(eql(key,node->key))
+          return true;
+      return false;
+    }
+
+    void find_candidate(const unsigned hashcode, node**& place) const {
+      const unsigned index = bit_reverse(hashcode) & (table_size-1);
+      for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
+    }
+
+  private:
+    fixed_size_allocator<sizeof(node)> node_alloca;
+    node** table;
+    unsigned table_size;
+    unsigned rehash_border;
+    const float rehash_threshold;
+    unsigned element_count;
   };
 
 

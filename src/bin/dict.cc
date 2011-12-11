@@ -170,5 +170,7 @@ int main(int argc, char** argv) {
 
   dict::sol_map<int,int> sm;
   sm.size();
+  sm[10] = 20;
+  std::cout << "@ " << sm[10] << ", " << sm[0] << std::endl;
   return 0;
 }
