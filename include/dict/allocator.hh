@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.4
+ * @license cc-dict 0.0.5
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -65,7 +65,7 @@ namespace dict {
     }
 
     void* allocate_block(unsigned count) {
-      chunk_block* new_block = new chunk_block(count*1.5);
+      chunk_block* new_block = new chunk_block(count*1.25);
       new_block->prev = block;
       block = new_block;
       position = count;

@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.4
+ * @license cc-dict 0.0.5
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -12,6 +12,7 @@
 #include "allocator.hh"
 #include <cstddef>
 #include <cstdlib>
+#include <cstring>
 
 namespace dict {
   namespace {
@@ -38,7 +39,8 @@ namespace dict {
      
      node() : next(this), hashcode(MAX_HASHCODE) {}
      node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
-     
+     ~node() {}
+
      static const node tail;
    };
     
@@ -52,6 +54,7 @@ namespace dict {
     sol_map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       table(NULL),
       table_size(INITIAL_TABLE_SIZE),
+      mask(table_size-1),
       rehash_border(0),
       rehash_threshold(rehash_threshold),
       element_count(0)
@@ -93,6 +96,7 @@ namespace dict {
         *place = del->next;
         --element_count;
         node_alloca.release(del);
+        del->~node();
         return true;
       } else {
         return false;
@@ -101,6 +105,9 @@ namespace dict {
 
     void clear() {
       element_count = 0;
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
+          cur->~node();
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       node_alloca.clear();
     }
@@ -119,15 +126,18 @@ namespace dict {
       const unsigned new_table_size = table_size<<1;
       
       table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*new_table_size));
-      sort_nodes();
+      // sort_nodes();
 
       for(unsigned i=0; i < table_size; i++)
         rehash_node(table[i], i);
 
       table_size = new_table_size;
+      mask = table_size-1;
       rehash_border = table_size * rehash_threshold;
     }
     
+    /* 
+    // ソートする効果はあまりない？
     void sort_nodes() {
       node* buf = (node*)node_alloca.allocate_block(element_count); 
       for(unsigned i=0; i < table_size; i++) {
@@ -137,26 +147,30 @@ namespace dict {
         node* cur = table[i];
         table[i] = buf;
         for(; cur != &node::tail; cur = cur->next, buf++) {
-          *buf = *cur;
+          std::memcpy(buf,cur,sizeof(node));
           if(buf->next != &node::tail)
             buf->next = buf+1;
         }
       }
+      
       node_alloca.release_old_blocks(); 
     }
+    */
     
     void rehash_node(node* head, unsigned parent_index) {
-      const unsigned child = parent_index | table_size; // 有効な最上位ビットを1にする => 子のインデックス
-      const unsigned hashcode = bit_reverse(child);
+      // 有効な最上位ビットを1にする => 子のインデックス
+      const unsigned child_index = parent_index | table_size; 
+
+      const unsigned hashcode = bit_reverse(child_index);
       node** place;
 
-      find_candidate(hashcode, place);
+      find_candidate(parent_index, hashcode, place);
       
       // table[parent] -> node1 -> node2 -> node3 -> tail
       //  ↓
       // table[parent] -> node1 -> tail
       // table[child]  -> node2 -> node3 -> tail
-      table[child] = *place;
+      table[child_index] = *place;
       *place = const_cast<node*>(&node::tail);      
     }
 
@@ -166,8 +180,11 @@ namespace dict {
     }
     
     bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
-      hashcode = bit_reverse(hash(key)) & ORDINAL_NODE_HASHCODE_MASK;
-      find_candidate(hashcode, place);
+      const unsigned row_hash = hash(key);
+      const unsigned index = row_hash & mask;
+      hashcode = bit_reverse(row_hash) & ORDINAL_NODE_HASHCODE_MASK;
+      
+      find_candidate(index, hashcode, place);
 
       for(node* node=*place; hashcode==node->hashcode; node=*(place=&node->next))
         if(eql(key,node->key))
@@ -175,8 +192,7 @@ namespace dict {
       return false;
     }
 
-    void find_candidate(const unsigned hashcode, node**& place) const {
-      const unsigned index = bit_reverse(hashcode) & (table_size-1);
+    void find_candidate(const unsigned index, const unsigned hashcode, node**& place) const {
       for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
     }
 
@@ -184,6 +200,7 @@ namespace dict {
     fixed_size_allocator<sizeof(node)> node_alloca;
     node** table;
     unsigned table_size;
+    unsigned mask;
     unsigned rehash_border;
     const float rehash_threshold;
     unsigned element_count;
@@ -193,7 +210,7 @@ namespace dict {
   const typename sol_map<Key,Value,Hash,Eql>::node sol_map<Key,Value,Hash,Eql>::node::tail;
 
   template<class Key, class Value, class Hash, class Eql>
-  const float sol_map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.90;
+  const float sol_map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.5;
 }
 
 #endif

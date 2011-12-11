@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.4
+ * @license cc-dict 0.0.5
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
@@ -25,7 +25,8 @@ namespace dict {
       
       node() : next(this), hashcode(MAX_HASHCODE) {}
       node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
-    
+      ~node() {}
+
       static const node tail;
     };
 
@@ -76,6 +77,7 @@ namespace dict {
         *place = del->next;
         --element_count;
         node_alloca.release(del);
+        del->~node();
         return true;
       } else {
         return false;
@@ -84,6 +86,9 @@ namespace dict {
     
     void clear() {
       element_count = 0;
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
+          cur->~node();
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       node_alloca.clear();
     }
@@ -102,6 +107,7 @@ namespace dict {
       table = new node*[table_size];
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       rehash_border = table_size * rehash_threshold;
+      mask = table_size-1;
     }
 
     void enlarge() {
@@ -144,7 +150,7 @@ namespace dict {
     }
 
     void find_candidate(const unsigned hashcode, node**& place) const {
-      const unsigned index = hashcode & (table_size-1);
+      const unsigned index = hashcode & mask;
       for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
     }
 
@@ -153,6 +159,7 @@ namespace dict {
     
     node** table;
     unsigned table_size;
+    unsigned mask;
     unsigned element_count;
     
     const float rehash_threshold;
