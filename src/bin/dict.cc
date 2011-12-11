@@ -28,7 +28,7 @@ void dict_bench(int data1[DSIZE], int data2[DSIZE]) {
 
   for(int i=0; i < DSIZE; i++) {
     dic[data1[i]] = data1[i];
-    assert(dic.find(data1[i]));
+    //assert(dic.find(data1[i]));
   }
   std::cout << " put:" << gettime()-beg_t << " #" << dic.size() << std::endl;
 
