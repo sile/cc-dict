@@ -76,8 +76,8 @@ namespace dict {
         node* del = *place;
         *place = del->next;
         --element_count;
-        node_alloca.release(del);
         del->~node();
+        node_alloca.release(del);
         return true;
       } else {
         return false;
