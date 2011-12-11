@@ -107,7 +107,7 @@ namespace dict {
       table = new node*[table_size];
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       rehash_border = table_size * rehash_threshold;
-      mask = table_size-1;
+      index_mask = table_size-1;
     }
 
     void enlarge() {
@@ -150,7 +150,7 @@ namespace dict {
     }
 
     void find_candidate(const unsigned hashcode, node**& place) const {
-      const unsigned index = hashcode & mask;
+      const unsigned index = hashcode & index_mask;
       for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
     }
 
@@ -159,7 +159,7 @@ namespace dict {
     
     node** table;
     unsigned table_size;
-    unsigned mask;
+    unsigned index_mask;
     unsigned element_count;
     
     const float rehash_threshold;

@@ -54,7 +54,7 @@ namespace dict {
     sol_map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       table(NULL),
       table_size(INITIAL_TABLE_SIZE),
-      mask(table_size-1),
+      index_mask(table_size-1),
       rehash_border(0),
       rehash_threshold(rehash_threshold),
       element_count(0)
@@ -132,7 +132,7 @@ namespace dict {
         rehash_node(table[i], i);
 
       table_size = new_table_size;
-      mask = table_size-1;
+      index_mask = table_size-1;
       rehash_border = table_size * rehash_threshold;
     }
     
@@ -181,7 +181,7 @@ namespace dict {
     
     bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
       const unsigned row_hash = hash(key);
-      const unsigned index = row_hash & mask;
+      const unsigned index = row_hash & index_mask;
       hashcode = bit_reverse(row_hash) & ORDINAL_NODE_HASHCODE_MASK;
       
       find_candidate(index, hashcode, place);
@@ -200,7 +200,7 @@ namespace dict {
     fixed_size_allocator<sizeof(node)> node_alloca;
     node** table;
     unsigned table_size;
-    unsigned mask;
+    unsigned index_mask;
     unsigned rehash_border;
     const float rehash_threshold;
     unsigned element_count;
