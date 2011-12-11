@@ -1,4 +1,5 @@
 #include "dict/map.hh"
+#include "dict/sol_map.hh"
 #include <iostream>
 #include <cstdlib>
 
@@ -167,5 +168,7 @@ int main(int argc, char** argv) {
   dict_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
+  dict::sol_map<int,int> sm;
+  sm.size();
   return 0;
 }
