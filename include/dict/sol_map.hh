@@ -139,6 +139,11 @@ namespace dict {
       // 有効な最上位ビットを1にする => 子のインデックス
       const unsigned child_index = parent_index | table_size; 
 
+      if(head==&node::tail) {
+        table[child_index] = head;
+        return;
+      }
+
       const unsigned hashcode = bit_reverse(child_index);
       node** place;
 
