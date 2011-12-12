@@ -64,20 +64,6 @@ namespace dict {
       return p;
     }
 
-    void* allocate_block(unsigned count) {
-      chunk_block* new_block = new chunk_block(count*2);
-      new_block->prev = block;
-      block = new_block;
-      position = count;
-      recycle_count = 0;
-      return block->chunks;
-    }
-
-    void release_old_blocks() {
-      delete block->prev;
-      block->prev = NULL;
-    }   
-
     void release(void* ptr) {
       chunk* free = reinterpret_cast<chunk*>(ptr);
       chunk* head = peek_chunk();

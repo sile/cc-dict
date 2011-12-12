@@ -126,8 +126,6 @@ namespace dict {
       const unsigned new_table_size = table_size<<1;
       
       table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*new_table_size));
-      // TODO: フラグで制御
-      // sort_nodes();
 
       for(unsigned i=0; i < table_size; i++)
         rehash_node(table[i], i);
@@ -135,25 +133,6 @@ namespace dict {
       table_size = new_table_size;
       index_mask = table_size-1;
       rehash_border = table_size * rehash_threshold;
-    }
-    
-    // ソートする効果はあまりない？ => コピー用のバッファ確保にメモリを使いすぎ？
-    void sort_nodes() {
-      node* buf = (node*)node_alloca.allocate_block(element_count); 
-      for(unsigned i=0; i < table_size; i++) {
-        if(table[i]==&node::tail)
-          continue;
-        
-        node* cur = table[i];
-        table[i] = buf;
-        for(; cur != &node::tail; cur = cur->next, buf++) {
-          std::memcpy(buf,cur,sizeof(node));
-          if(buf->next != &node::tail)
-            buf->next = buf+1;
-        }
-      }
-      
-      node_alloca.release_old_blocks(); 
     }
     
     void rehash_node(node* head, unsigned parent_index) {

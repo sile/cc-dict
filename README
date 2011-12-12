@@ -26,6 +26,9 @@
 　　 - Hash: Keyに適用するハッシュ関数(ファンクタ)。デフォルトはdict:hashクラス。
 　　 - Eql: 二つのKeyの等値性を判定する関数(ファンクタ)。デフォルトはdict:eqlクラス。
 
+・クラス# sol_map
+　　Split-Ordered-Listを応用したハッシュマップ。インターフェースはmapと同様。
+
 --
 tempalte<Key, Value, Hash, Eql>
 class map {
