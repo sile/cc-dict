@@ -12,7 +12,7 @@
 
 
 [使用方法]
-'$CC_DICT_ROOT/include/dict.hh'をインクルードする
+'$CC_DICT_ROOT/include/map.hh'(or sol_map.hh)をインクルードする
 
 
 [API]
