@@ -103,6 +103,7 @@ namespace dict {
     }
 
     ~sol_map() {
+      call_all_node_destructor();
       std::free(table);
     }
 
@@ -143,9 +144,7 @@ namespace dict {
 
     void clear() {
       element_count = 0;
-      for(unsigned i=0; i < table_size; i++)
-        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
-          cur->~node();
+      call_all_node_destructor();
       std::fill(table, table+table_size, const_cast<node*>(&node::tail));
       node_alloca.clear();
     }
@@ -215,6 +214,12 @@ namespace dict {
 
     void find_candidate(const unsigned index, const unsigned hashcode, node**& place) const {
       for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
+    }
+
+    void call_all_node_destructor() {
+      for(unsigned i=0; i < table_size; i++)
+        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
+          cur->~node();
     }
 
   private:
