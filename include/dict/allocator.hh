@@ -8,6 +8,7 @@
 #define DICT_ALLOCATOR_HH
 
 #include <cstdlib>
+#include <vector>
 
 namespace dict {
   template<class T>
@@ -15,19 +16,28 @@ namespace dict {
   public:
     template<class U>
     struct ptr_t {
-      ptr_t(U src) : ptr(src) {}
-      ptr_t() : ptr(NULL) {}
+      ptr_t(fixed_size_allocator& a) {
+        ptr = (U)a.allocate();
+        ptr->hashcode = 0xFFFFFFFF; // XXX
+      }
 
-      U operator->() {
+      ptr_t() : ptr(NULL) {}
+      
+      const U ref(const fixed_size_allocator& a) const {
         return ptr;
       }
-      operator void*() {
-        return ptr;
+      
+      bool operator!=(const ptr_t& x) const {
+        return ptr != x.ptr;
+      }
+
+      bool operator==(const ptr_t& x) const {
+        return ptr == x.ptr;
       }
 
       U ptr;
     };
-    //typedef T* index_t;
+    
     typedef ptr_t<T*> index_t;
     
   private:
@@ -60,6 +70,7 @@ namespace dict {
     fixed_size_allocator()
       : block(NULL), position(0), recycle_count(0) {
       block = new chunk_block(INITIAL_BLOCK_SIZE);
+      vec.push_back(block);
     }
       
     ~fixed_size_allocator() {
@@ -116,12 +127,15 @@ namespace dict {
       new_block->prev = block;
       block = new_block;
       position = 0;
+      vec.push_back(block);
     }
 
   protected:
     chunk_block* block;
     unsigned position;
     unsigned recycle_count;
+  public:
+    std::vector<chunk_block*> vec;
   };
 }
 
