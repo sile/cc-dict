@@ -13,7 +13,22 @@ namespace dict {
   template<class T>
   class fixed_size_allocator {
   public:
-    typedef T* index_t;
+    template<class U>
+    struct ptr_t {
+      ptr_t(U src) : ptr(src) {}
+      ptr_t() : ptr(NULL) {}
+
+      U operator->() {
+        return ptr;
+      }
+      operator void*() {
+        return ptr;
+      }
+
+      U ptr;
+    };
+    //typedef T* index_t;
+    typedef ptr_t<T*> index_t;
     
   private:
     static const unsigned CHUNK_SIZE = sizeof(T);
