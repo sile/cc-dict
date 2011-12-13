@@ -1,5 +1,5 @@
 /**
- * @license cc-dict 0.0.6
+ * @license cc-dict 0.0.7
  * Copyright (c) 2011, Takeru Ohta, phjgt308@gmail.com
  * MIT license
  * https://github.com/sile/cc-dict/blob/master/COPYING
