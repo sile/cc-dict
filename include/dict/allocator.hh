@@ -8,11 +8,78 @@
 #define DICT_ALLOCATOR_HH
 
 #include <cstdlib>
+#include <vector>
+#include <iostream>
 
 namespace dict {
-  template<unsigned CHUNK_SIZE>
-  class fixed_size_allocator { 
+  template<class T>
+  class fixed_size_allocator {
+  public:
+    /*
+    template<class U>
+    struct ptr_t {
+      ptr_t(fixed_size_allocator& a) {
+        ptr = (U)a.allocate();
+        ptr->hashcode = 0xFFFFFFFF; // XXX
+      }
+
+      ptr_t() : ptr(NULL) {}
+      
+      const U ref(const fixed_size_allocator& a) const {
+        return ptr;
+      }
+      
+      bool operator!=(const ptr_t& x) const {
+        return ptr != x.ptr;
+      }
+
+      bool operator==(const ptr_t& x) const {
+        return ptr == x.ptr;
+      }
+
+      U ptr;
+    };
+    */
+
+    template<class U>
+    struct ptr_t {
+      ptr_t(fixed_size_allocator& a) {
+        b.base = a.vec.size()-1;
+        b.offset = a.position;
+        //std::cout << "# " << a.vec.size() << ":" << b.base << ", " << b.offset << std::endl;
+        
+        U ptr = (U)a.allocate();
+        ptr->hashcode = 0xFFFFFFFF; // XXX
+      }
+
+      ptr_t() : n(0) {}
+      
+      const U ref(const fixed_size_allocator& a) const {
+        //std::cout << "IN: " << b.base << ", " << b.offset << std::endl;
+        return (U)(&a.vec[b.base]->chunks[b.offset]);
+      }
+      
+      bool operator!=(const ptr_t& x) const {
+        return n != x.n;
+      }
+
+      bool operator==(const ptr_t& x) const {
+        return n == x.n;
+      }
+
+      union {
+        struct {
+          unsigned base:8;
+          unsigned offset:24;
+        } b;
+        unsigned n;
+      };
+    };
+    
+    typedef ptr_t<T*> index_t;
+    
   private:
+    static const unsigned CHUNK_SIZE = sizeof(T);
     static const unsigned INITIAL_BLOCK_SIZE=8;
 
     struct chunk {
@@ -41,6 +108,7 @@ namespace dict {
     fixed_size_allocator()
       : block(NULL), position(0), recycle_count(0) {
       block = new chunk_block(INITIAL_BLOCK_SIZE);
+      vec.push_back(block);
     }
       
     ~fixed_size_allocator() {
@@ -97,12 +165,16 @@ namespace dict {
       new_block->prev = block;
       block = new_block;
       position = 0;
+      vec.push_back(block);
     }
 
-  protected:
+    //  protected:
+  public:
     chunk_block* block;
     unsigned position;
     unsigned recycle_count;
+
+    std::vector<chunk_block*> vec;
   };
 }
 
