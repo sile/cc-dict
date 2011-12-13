@@ -9,11 +9,13 @@
 
 #include <cstdlib>
 #include <vector>
+#include <iostream>
 
 namespace dict {
   template<class T>
   class fixed_size_allocator {
   public:
+    /*
     template<class U>
     struct ptr_t {
       ptr_t(fixed_size_allocator& a) {
@@ -36,6 +38,42 @@ namespace dict {
       }
 
       U ptr;
+    };
+    */
+
+    template<class U>
+    struct ptr_t {
+      ptr_t(fixed_size_allocator& a) {
+        b.base = a.vec.size()-1;
+        b.offset = a.position;
+        //std::cout << "# " << a.vec.size() << ":" << b.base << ", " << b.offset << std::endl;
+        
+        U ptr = (U)a.allocate();
+        ptr->hashcode = 0xFFFFFFFF; // XXX
+      }
+
+      ptr_t() : n(0) {}
+      
+      const U ref(const fixed_size_allocator& a) const {
+        //std::cout << "IN: " << b.base << ", " << b.offset << std::endl;
+        return (U)(a.vec[b.base]->chunks+b.offset);
+      }
+      
+      bool operator!=(const ptr_t& x) const {
+        return n != x.n;
+      }
+
+      bool operator==(const ptr_t& x) const {
+        return n == x.n;
+      }
+
+      union {
+        struct {
+          unsigned base:8;
+          unsigned offset:24;
+        } b;
+        unsigned n;
+      };
     };
     
     typedef ptr_t<T*> index_t;
@@ -123,6 +161,7 @@ namespace dict {
     }
     
     void enlarge () {
+      //std::cout << "enlarge: " << block->size << std::endl;
       chunk_block* new_block = new chunk_block(block->size*1.25);
       new_block->prev = block;
       block = new_block;
@@ -130,11 +169,12 @@ namespace dict {
       vec.push_back(block);
     }
 
-  protected:
+    //  protected:
+  public:
     chunk_block* block;
     unsigned position;
     unsigned recycle_count;
-  public:
+
     std::vector<chunk_block*> vec;
   };
 }
