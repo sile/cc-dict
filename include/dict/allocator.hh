@@ -10,9 +10,13 @@
 #include <cstdlib>
 
 namespace dict {
-  template<unsigned CHUNK_SIZE>
-  class fixed_size_allocator { 
+  template<class T>
+  class fixed_size_allocator {
+  public:
+    typedef T* index_t;
+    
   private:
+    static const unsigned CHUNK_SIZE = sizeof(T);
     static const unsigned INITIAL_BLOCK_SIZE=8;
 
     struct chunk {
