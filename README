@@ -5,14 +5,13 @@
 　・挿入した要素のハッシュコードは記憶される (再計算はされない)
 　・要素(ノード)用の領域は、独自のアロケータで管理
 　　・要素の追加/削除ごとにnew/deleteを呼び出すことはしていない
-　・Split-Ordered-Listのアイディアの応用版あり (sol_map)
 
 [バージョン]
-・0.0.6
+・0.0.7
 
 
 [使用方法]
-'$CC_DICT_ROOT/include/map.hh'(or sol_map.hh)をインクルードする
+'$CC_DICT_ROOT/include/map.hh'をインクルードする
 
 
 [API]
@@ -25,9 +24,6 @@
 　　 - Value: 要素の値の型
 　　 - Hash: Keyに適用するハッシュ関数(ファンクタ)。デフォルトはdict:hashクラス。
 　　 - Eql: 二つのKeyの等値性を判定する関数(ファンクタ)。デフォルトはdict:eqlクラス。
-
-・クラス# sol_map
-　　Split-Ordered-Listを応用したハッシュマップ。インターフェースはmapと同様。
 
 --
 tempalte<Key, Value, Hash, Eql>

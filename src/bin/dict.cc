@@ -1,5 +1,4 @@
 #include "dict/map.hh"
-#include "dict/sol_map.hh"
 #include <iostream>
 #include <cstdlib>
 
@@ -99,68 +98,6 @@ void unorderedmap_bench_small(int data1[DSIZE], int data2[DSIZE]) {
   std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
 }
 
-void dict_sol_bench(int data1[DSIZE], int data2[DSIZE]) {
-  dict::sol_map<int,int> dic;
-  double beg_t = gettime();
-  int count = 0;
-
-  for(int i=0; i < DSIZE; i++) {
-    dic[data1[i]] = data1[i];
-  }
-  std::cout << " put:" << gettime()-beg_t << " #" << dic.size() << std::endl;
-
-  beg_t = gettime();
-  count = 0;
-  for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data1[i]))
-      count++;
-  }
-  std::cout << " get1: " << gettime()-beg_t << " #" << count << std::endl;
-  
-  count = 0;
-  for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data2[i]))
-      count++;
-  }
-  std::cout << " get2: " << gettime()-beg_t << " #" << count << std::endl;
-
-  beg_t = gettime();
-  count = 0;
-  for(int i=0; i < DSIZE; i++) {
-    count += dic.erase(data1[i]);
-  }
-  std::cout << " erase: " << gettime()-beg_t << " #" << count << std::endl;  
-
-  beg_t = gettime();
-  count = 0;
-  for(int i=0; i < DSIZE; i++) {
-    if(dic.find(data2[i]))
-      count++;
-  }
-  std::cout << " get3: " << gettime()-beg_t << " #" << count << std::endl;
-
-}
-
-void dict_sol_bench_small(int data1[DSIZE], int data2[DSIZE]) {
-  double beg_t = gettime();
-  unsigned count = 0;
-
-  for(int i=0; i < DSIZE; i += N) {
-    dict::sol_map<int,int> dic;  
-    
-    for(int j=0; j < N; j++)
-      dic[data1[i+j]] = data1[i+j];
-    for(int j=0; j < N; j++)
-      if(dic.find(data1[i+j]))
-        count++;
-    for(int j=0; j < N; j++)
-      if(dic.find(data2[i+j]))
-        count++;
-  }
-
-  std::cout << " put, get1, get2: " << gettime()-beg_t << " #" << count << std::endl;
-}
-
 void unorderedmap_bench(int data1[DSIZE], int data2[DSIZE]) {
   unordered_map<int,int> dic;
   double beg_t = gettime();
@@ -216,11 +153,6 @@ int main(int argc, char** argv) {
   dict_bench(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
-  beg_t = gettime();  
-  std::cout << "dict_sol: large" << std::endl;
-  dict_sol_bench(data1, data2);
-  std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
-
   beg_t = gettime();
   std::cout << "unorderedmap: large" << std::endl;
   unorderedmap_bench(data1, data2);
@@ -231,11 +163,6 @@ int main(int argc, char** argv) {
   dict_bench_small(data1, data2);
   std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
 
-  beg_t = gettime();
-  std::cout << "dict_sol: small" << std::endl;
-  dict_sol_bench_small(data1, data2);
-  std::cout << " => total: " << gettime()-beg_t << std::endl << std::endl;;
-  
   beg_t = gettime();
   std::cout << "unorderedmap: small" << std::endl;
   unorderedmap_bench_small(data1, data2);

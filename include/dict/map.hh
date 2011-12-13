@@ -18,7 +18,7 @@ namespace dict {
   class map { 
   private:
     struct node {
-      node* next;
+      node* next; // TODO: 32bitになるようにしてみる？
       unsigned hashcode;
       Key key;
       Value value;
@@ -27,7 +27,7 @@ namespace dict {
       node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
       ~node() {}
 
-      static const node tail;
+      static node tail;
     };
 
   private:
@@ -88,7 +88,7 @@ namespace dict {
     void clear() {
       call_all_node_destructor();
       element_count = 0;
-      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
+      std::fill(table, table+table_size, &node::tail);
       node_alloca.clear();
     }
 
@@ -102,35 +102,49 @@ namespace dict {
     unsigned size() const { return element_count; }
 
   private:
+    // TODO: 展開
     void init() {
       table = new node*[table_size];
-      std::fill(table, table+table_size, const_cast<node*>(&node::tail));
+      std::fill(table, table+table_size, &node::tail);
       rehash_border = table_size * rehash_threshold;
       index_mask = table_size-1;
     }
 
+    // TODO: 整理
     void enlarge() {
       const unsigned old_table_size = table_size;
-      node** old_table = table;
 
       table_size <<= 1;
-      init();
+      table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*table_size));
+      rehash_border = table_size * rehash_threshold;
+      index_mask = table_size-1;
 
       for(unsigned i=0; i < old_table_size; i++)
-        for(node* cur=old_table[i]; cur != &node::tail; cur = rehash_node(cur));
-
-      delete [] old_table;
+        rehash_node(i, old_table_size);
     }
     
-    node* rehash_node(node* cur) {
-      node* next = cur->next;
-      node** place;
+    void rehash_node(unsigned old_index, unsigned old_table_size) {
+      const unsigned i0 = old_index;
+      const unsigned i1 = old_index | old_table_size;
       
-      find_candidate(cur->hashcode, place);
-      cur->next = *place;
-      *place = cur;
-      
-      return next;
+      node* cur = table[old_index];
+      node* n0 = table[i0] = &node::tail;
+      node* n1 = table[i1] = &node::tail;
+
+      for(; cur != &node::tail; cur = cur->next)
+        if(cur->hashcode & old_table_size)
+          if(table[i1]==&node::tail)
+            n1 = table[i1] = cur;
+          else
+            n1 = n1->next = cur;
+        else
+          if(table[i0]==&node::tail)
+            n0 = table[i0] = cur;
+          else
+            n0 = n0->next = cur;
+
+      n0->next = &node::tail;
+      n1->next = &node::tail;
     }
 
     bool find_node(const Key& key, node**& place) const {
@@ -175,7 +189,7 @@ namespace dict {
   };
 
   template<class Key, class Value, class Hash, class Eql>
-  const typename map<Key,Value,Hash,Eql>::node map<Key,Value,Hash,Eql>::node::tail;
+  typename map<Key,Value,Hash,Eql>::node map<Key,Value,Hash,Eql>::node::tail;
 
   template<class Key, class Value, class Hash, class Eql>
   const float map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.75;
