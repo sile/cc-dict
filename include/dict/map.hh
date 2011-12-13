@@ -154,17 +154,15 @@ namespace dict {
     
     bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
       hashcode = hash(key) & ORDINAL_NODE_HASHCODE_MASK;
-      find_candidate(hashcode, place);
-
-      for(node* node=*place; hashcode==node->hashcode; node=*(place=&node->next))
-        if(eql(key,node->key))
-          return true;
-      return false;
-    }
-
-    void find_candidate(const unsigned hashcode, node**& place) const {
       const unsigned index = hashcode & index_mask;
-      for(node* node=*(place=&table[index]); node->hashcode < hashcode; node=*(place=&node->next));
+      
+      for(place=&table[index]; (*place)->hashcode < hashcode; place=&(*place)->next);
+
+      for(; (*place)->hashcode == hashcode; place=&(*place)->next)
+        if(eql((*place)->key, key))
+          return true;
+      
+      return false;
     }
 
     void call_all_node_destructor() {
