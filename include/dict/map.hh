@@ -18,17 +18,18 @@ namespace dict {
   class map { 
   private:
     struct node {
-      node* next; // TODO: 32bitになるようにしてみる？
+      typedef typename fixed_size_allocator<node>::index_t ptr;
+      ptr next; 
       unsigned hashcode;
       Key key;
       Value value;
       
-      node() : next(this), hashcode(MAX_HASHCODE) {}
-      node(const Key& key, node* next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
+      node() : next(NULL), hashcode(MAX_HASHCODE) {}
+      node(const Key& key, ptr next, unsigned hashcode) : next(next), hashcode(hashcode), key(key) {}
       ~node() {}
-
-      static node tail;
     };
+
+    typedef typename node::ptr node_ptr;
 
   private:
     static const float DEFAULT_REHASH_THRESHOLD;
@@ -41,7 +42,8 @@ namespace dict {
       table(NULL),
       table_size(INITIAL_TABLE_SIZE),
       element_count(0),
-      rehash_threshold(rehash_threshold)
+      rehash_threshold(rehash_threshold),
+      tail(node_alloca)
     {
       init();
     }
@@ -52,19 +54,26 @@ namespace dict {
     }
     
     Value* find(const Key& key) const {
-      node** place;
-      return find_node(key,place) ? &(*place)->value : reinterpret_cast<Value*>(NULL);
+      node_ptr* place;
+      return find_node(key,place) ? &(*place).ref(node_alloca)->value : reinterpret_cast<Value*>(NULL);
     }
 
     Value& operator[](const Key& key) {
       unsigned hashcode;
-      node** place;
+      node_ptr* place;
       
       if(find_node(key, place, hashcode))
-        return (*place)->value;
+        return (*place).ref(node_alloca)->value;
       
-      *place = new (node_alloca.allocate()) node(key,*place,hashcode);
-      Value& value = (*place)->value;
+      node_ptr tmp(node_alloca);
+      node_ptr next = *place;
+      *place = tmp; 
+      node& n = *tmp.ref(node_alloca);
+      n.key = key; // XXX:
+      n.next = next;
+      n.hashcode = hashcode;
+
+      Value& value = n.value;
       if(++element_count >= rehash_border)
         enlarge();
       
@@ -72,13 +81,13 @@ namespace dict {
     }
   
     bool erase(const Key& key) {
-      node** place;
+      node_ptr* place;
       if(find_node(key,place)) {
-        node* del = *place;
-        *place = del->next;
+        node_ptr del = *place;
+        *place = del.ref(node_alloca)->next;
         --element_count;
-        del->~node();
-        node_alloca.release(del);
+        del.ref(node_alloca)->~node();
+        node_alloca.release(del.ref(node_alloca));
         return true;
       } else {
         return false;
@@ -88,15 +97,15 @@ namespace dict {
     void clear() {
       call_all_node_destructor();
       element_count = 0;
-      std::fill(table, table+table_size, &node::tail);
+      std::fill(table, table+table_size, tail);
       node_alloca.clear();
     }
 
     template<class Callback>
     void each(Callback& fn) const {
       for(unsigned i=0; i < table_size; i++)
-        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
-          fn(cur->key, cur->value);      
+        for(node_ptr cur=table[i]; cur != tail; cur = cur.ref(node_alloca)->next)
+          fn(cur.ref(node_alloca)->key, cur.ref(node_alloca)->value);      
     }
 
     unsigned size() const { return element_count; }
@@ -104,8 +113,8 @@ namespace dict {
   private:
     // TODO: 展開
     void init() {
-      table = new node*[table_size];
-      std::fill(table, table+table_size, &node::tail);
+      table = new node_ptr[table_size];
+      std::fill(table, table+table_size, tail);
       rehash_border = table_size * rehash_threshold;
       index_mask = table_size-1;
     }
@@ -115,7 +124,7 @@ namespace dict {
       const unsigned old_table_size = table_size;
 
       table_size <<= 1;
-      table = reinterpret_cast<node**>(std::realloc(table, sizeof(node*)*table_size));
+      table = reinterpret_cast<node_ptr*>(std::realloc(table, sizeof(node_ptr)*table_size));
       rehash_border = table_size * rehash_threshold;
       index_mask = table_size-1;
 
@@ -127,39 +136,39 @@ namespace dict {
       const unsigned i0 = old_index;
       const unsigned i1 = old_index | old_table_size;
       
-      node* cur = table[old_index];
-      node* n0 = table[i0] = &node::tail;
-      node* n1 = table[i1] = &node::tail;
+      node_ptr cur = table[old_index];
+      node_ptr n0 = table[i0] = tail;
+      node_ptr n1 = table[i1] = tail;
 
-      for(; cur != &node::tail; cur = cur->next)
-        if(cur->hashcode & old_table_size)
-          if(table[i1]==&node::tail)
+      for(; cur != tail; cur = cur.ref(node_alloca)->next)
+        if(cur.ref(node_alloca)->hashcode & old_table_size)
+          if(table[i1]==tail)
             n1 = table[i1] = cur;
           else
-            n1 = n1->next = cur;
+            n1 = n1.ref(node_alloca)->next = cur;
         else
-          if(table[i0]==&node::tail)
+          if(table[i0]==tail)
             n0 = table[i0] = cur;
           else
-            n0 = n0->next = cur;
+            n0 = n0.ref(node_alloca)->next = cur;
 
-      n0->next = &node::tail;
-      n1->next = &node::tail;
+      n0.ref(node_alloca)->next = tail;
+      n1.ref(node_alloca)->next = tail;
     }
 
-    bool find_node(const Key& key, node**& place) const {
+    bool find_node(const Key& key, node_ptr*& place) const {
       unsigned hashcode;
       return find_node(key, place, hashcode);
     }
     
-    bool find_node(const Key& key, node**& place, unsigned& hashcode) const {
+    bool find_node(const Key& key, node_ptr*& place, unsigned& hashcode) const {
       hashcode = hash(key) & ORDINAL_NODE_HASHCODE_MASK;
       const unsigned index = hashcode & index_mask;
       
-      for(place=&table[index]; (*place)->hashcode < hashcode; place=&(*place)->next);
+      for(place=&table[index]; (*place).ref(node_alloca)->hashcode < hashcode; place=&(*place).ref(node_alloca)->next);
 
-      for(; (*place)->hashcode == hashcode; place=&(*place)->next)
-        if(eql((*place)->key, key))
+      for(; (*place).ref(node_alloca)->hashcode == hashcode; place=&(*place).ref(node_alloca)->next)
+        if(eql((*place).ref(node_alloca)->key, key))
           return true;
       
       return false;
@@ -167,14 +176,14 @@ namespace dict {
 
     void call_all_node_destructor() {
       for(unsigned i=0; i < table_size; i++)
-        for(node* cur=table[i]; cur != &node::tail; cur = cur->next)
-          cur->~node();
+        for(node_ptr cur=table[i]; cur != tail; cur = cur.ref(node_alloca)->next)
+          cur.ref(node_alloca)->~node();
     }
 
   private:
-    fixed_size_allocator<sizeof(node)> node_alloca;
+    fixed_size_allocator<node> node_alloca;
     
-    node** table;
+    node_ptr* table;
     unsigned table_size;
     unsigned index_mask;
     unsigned element_count;
@@ -184,10 +193,12 @@ namespace dict {
     
     static const Hash hash;
     static const Eql eql;
+    
+    node_ptr tail;
   };
 
-  template<class Key, class Value, class Hash, class Eql>
-  typename map<Key,Value,Hash,Eql>::node map<Key,Value,Hash,Eql>::node::tail;
+  //  template<class Key, class Value, class Hash, class Eql>
+  //  typename map<Key,Value,Hash,Eql>::node map<Key,Value,Hash,Eql>::node::tail;
 
   template<class Key, class Value, class Hash, class Eql>
   const float map<Key,Value,Hash,Eql>::DEFAULT_REHASH_THRESHOLD = 0.75;
