@@ -56,7 +56,7 @@ namespace dict {
       
       const U ref(const fixed_size_allocator& a) const {
         //std::cout << "IN: " << b.base << ", " << b.offset << std::endl;
-        return (U)(a.vec[b.base]->chunks+b.offset);
+        return (U)(&a.vec[b.base]->chunks[b.offset]);
       }
       
       bool operator!=(const ptr_t& x) const {
@@ -161,7 +161,8 @@ namespace dict {
     }
     
     void enlarge () {
-      //std::cout << "enlarge: " << block->size << std::endl;
+      if(block->size > 10000000)
+        std::cout << "enlarge: " << block->size << std::endl;
       chunk_block* new_block = new chunk_block(block->size*1.25);
       new_block->prev = block;
       block = new_block;

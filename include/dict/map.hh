@@ -68,11 +68,12 @@ namespace dict {
       node_ptr tmp(node_alloca);
       node_ptr next = *place;
       *place = tmp; 
-      (*place).ref(node_alloca)->key = key; // XXX:
-      (*place).ref(node_alloca)->next = next;
-      (*place).ref(node_alloca)->hashcode = hashcode;
+      node& n = *tmp.ref(node_alloca);
+      n.key = key; // XXX:
+      n.next = next;
+      n.hashcode = hashcode;
 
-      Value& value = (*place).ref(node_alloca)->value;
+      Value& value = n.value;
       if(++element_count >= rehash_border)
         enlarge();
       
