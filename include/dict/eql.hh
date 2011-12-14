@@ -19,13 +19,8 @@ namespace dict {
   };
 
   template<class T>
-  bool eql(T k1, T k2) {
+  inline bool eql(T k1, T k2) {
     return k1 == k2;
-  }
-  
-  template<>
-  bool eql(const char* k1, const char* k2) {
-    return std::strcmp(k1,k2)==0;
   }
 }
 

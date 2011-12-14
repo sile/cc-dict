@@ -18,7 +18,7 @@ namespace dict {
   class map { 
   private:
     struct node {
-      node* next; // TODO: 32bitになるようにしてみる？
+      node* next; 
       unsigned hashcode;
       Key key;
       Value value;
@@ -40,10 +40,13 @@ namespace dict {
     map(float rehash_threshold=DEFAULT_REHASH_THRESHOLD) :
       table(NULL),
       table_size(INITIAL_TABLE_SIZE),
+      index_mask(table_size-1),
       element_count(0),
-      rehash_threshold(rehash_threshold)
+      rehash_threshold(rehash_threshold),
+      rehash_border(table_size*rehash_threshold)
     {
-      init();
+      table = new node*[table_size];
+      std::fill(table, table+table_size, &node::tail);
     }
     
     ~map() {
@@ -102,15 +105,6 @@ namespace dict {
     unsigned size() const { return element_count; }
 
   private:
-    // TODO: 展開
-    void init() {
-      table = new node*[table_size];
-      std::fill(table, table+table_size, &node::tail);
-      rehash_border = table_size * rehash_threshold;
-      index_mask = table_size-1;
-    }
-
-    // TODO: 整理
     void enlarge() {
       const unsigned old_table_size = table_size;
 
