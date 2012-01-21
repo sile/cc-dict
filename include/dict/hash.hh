@@ -10,7 +10,7 @@
 #include <string>
 
 namespace dict {
-  const unsigned GOLDEN_RATIO_PRIME=(2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
+  const unsigned GOLDEN_RATIO_PRIME=0x9e370001; // (2^31) + (2^29) - (2^25) + (2^22) - (2^19) - (2^16) + 1;
 
   template<class Key>
   class hash_functor {
